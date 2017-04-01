@@ -1,0 +1,61 @@
+offerStage:
+  formType: basicForm 
+  title: Offer Stage
+  text: You are a proposer.
+  actions:
+    offer:
+      label: "Please choose your offer"
+      inputType: selectize
+
+acceptStage:
+  formType: basicForm 
+  title: Accept Stage
+  text: >
+    <p>You are a responder.</p>
+    The proposer has offered you **{{offer}}** out of {{cake}}.
+  actions:
+    accept:
+      label: "Do you want to accept or reject the offer?"
+      choiceLabels: ['reject offer','accept offer']
+
+resultsStage:
+  '_if player == 1':
+    _include: resultsStage_Proposer
+  '_if player == 2':
+    _include: resultsStage_Responder
+
+resultsStage_Proposer:
+  formType: basicForm 
+  title: Results Proposer
+  transform:
+    str_accept:
+      - [1, "accepted"]
+      - [0, "rejected"]
+  text: |
+    You offered **{{offer}}** out of {{cake}}.<br>
+    The responder has **{{str_accept}}** your offer.
+    <br>
+    Payoffs:
+    
+      - You:       {{payoff_1}}
+    
+      - Responder: {{payoff_2}}
+
+resultsStage_Responder:
+  formType: basicForm 
+  title: Results Responder
+  transform:
+    str_accept:
+      - [1, "accepted"]
+      - [0, "rejected"]
+  text: >
+    You were offered **{{offer}}** out of {{cake}}.<br>
+    You have **{{str_accept}}** the offer.
+    <br>
+    Payoffs:
+    
+      - Proposer:  {{payoff_1}}
+      
+      - You:       {{payoff_2}}
+
+  

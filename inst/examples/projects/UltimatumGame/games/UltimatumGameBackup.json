@@ -1,0 +1,35 @@
+{"sfg": {
+  "gameId": "UltimatumGame",
+  "varpar": [["variants↓ params→","numPlayers","cake","descr"],
+             ["base","2","4",""],
+             ["highStake","","10",""]],
+  "stages": [
+     {
+        "name":"offerStage",
+        "player": 1,
+        "descr": "proposer makes offer",
+        "actions":[
+            {"name": "offer", "set": "[0,1,2,3,4,5,6,7,8,9,10]"}
+        ]
+    },
+    {
+        "name":"acceptStage",
+        "player": 2,
+        "observe": "offer",
+        "descr": "responder decides to accept or not",
+        "actions":[
+            {"name": "accept", "set": "[0,1]"}
+        ]
+    },
+    {
+        "name":"resultsStage",
+        "player": "[1,2]",
+        "observe": "[offer,accept]",
+        "descr": "payoffs are computed and results are shown\n",
+        "payoff": [
+            "(cake-offer)*accept",
+            "offer*accept"
+        ]
+    }
+    ]
+ }}

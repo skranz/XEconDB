@@ -1,0 +1,201 @@
+{
+  "game": {
+    "expanded": true,
+    "fields": [
+      {
+        "name": "gameId",
+        "edit": false
+      },
+      {
+        "name": "gameInfo"
+      },
+      {
+        "name": "varpar",
+        "title": "Variants and Parameters",
+        "special": true
+      },
+      {
+        "name": "stages",
+        "isList": true,
+        "expanded": true,
+        "childType": "stage"
+      }
+    ]
+  },
+  "stage": {
+    "expanded": false,
+    "fields": [
+      {
+        "name": "name",
+        "type": "character"
+      },
+      {
+        "name": "player",
+        "type": "integer",
+        "min": 1
+      },
+      {
+        "name": "condition",
+        "type": "condition",
+        "inputType": "textArea"        
+      },
+      {
+        "name": "observe",
+        "type": "character",
+        "inputType": "textArea",        
+        "multiple": true,
+        "onlyDefined": true,
+        "cases": true
+      },
+      {
+        "expanded": true,
+        "name": "nature",
+        "childType": "randomVar",
+        "isList": true
+      },
+      {
+        "name": "compute",
+        "childType": "transformation",
+        "expanded": true,
+        "isList": true
+      },
+      {
+        "expanded": true,
+        "name": "actions",
+        "childType": "action",
+        "isList": true
+      },
+      {
+        "name": "special",
+        "type": "stageSpecial"
+      }
+    ]
+  },
+
+  "stageSpecial": {
+    "expanded": false,
+    "fields": [
+      {
+        "expanded": true,
+        "name": "beliefs",
+        "childType": "belief",
+        "isList": true
+      },
+      {
+        "expanded": true,
+        "name": "freetext",
+        "childType": "freetext",
+        "isList": true
+      }
+    ]
+  },
+
+  "gameInfo": {
+    "expanded": false,
+    "fields": [
+      {
+        "name": "label"
+      },
+      {
+        "name": "tags",
+        "setVar": "gameTags"
+      },
+      {
+        "name": "descr",
+        "inputType": "textArea"
+      },
+      {
+        "name": "articles"
+      },
+      {
+        "name": "variantOf"
+      }
+    ]
+  },
+  "gameTags": [
+    "ultimatum",
+    "intentions",
+    "public goods",
+    "punishment",
+    "dictator",
+    "gift exchange",
+    "prisoners dilemma"
+  ],
+  "action": {
+    "expanded": true, 
+    "fields": [
+      {
+        "name": "name",
+        "type": "character"
+      },
+      {
+        "name": "set",
+        "type": "formula",
+        "inputType": "textArea",        
+        "multiple": true
+      },
+      {
+        "name": "strategyMethodDomain",
+        "type": "formula",
+        "inputType": "textArea",
+        "multiple": true,
+        "help": "If empty no strategy method is used. Otherwise state the actions (variable name) that consitute the domain for the strategy method. This means for each possible realization of the domain actions, an action must be chosen."
+      }
+    ]
+  },
+  "freetext": {
+    "fields": [
+      {
+        "name": "name"
+      }
+    ]
+  },
+  "belief": {
+    "fields": [
+      {
+        "name": "name"
+      },
+      {
+        "name": "refVar",
+        "type": "variable",
+        "help": "Belief about which variable?"
+      }
+    ]
+  },
+  "randomVar": {
+    "fields": [
+      {
+        "name": "name"
+      },
+      {
+        "name": "set",
+        "type": "formula",
+        "inputType": "textArea",        
+        "multiple": true,
+        "help": "possible realizations of the variable"
+      },
+      {
+        "name": "probs:",
+        "type": "numeric",
+        "inputType": "textArea",
+        "multiple": true,
+        "help": "Probability for each realization. If empty all realizations are equally likely.\n"
+      }
+    ]
+  },
+  "transformation": {
+    "fields": [
+      {
+        "name": "name"
+      },
+      {
+        "name": "formula",
+        "type": "formula",
+        "inputType": "textArea",        
+        "cases": true
+      }
+    ]
+  }
+
+
+}

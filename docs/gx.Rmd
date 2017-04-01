@@ -1,0 +1,23 @@
+---
+title: "XEcon Studio"
+author: "Sebastian Kranz"
+date: "31 August 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Overview XEcon Studio
+
+## Experiment Projects
+Project File:
+  filetype: .XEproj
+  
+Folder Structure:
+  games
+  gambit
+  preferences
+  forms
+  original:  all original experiment files

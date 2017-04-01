@@ -1,0 +1,168 @@
+Experimental Economics Database (ExpEconDB)
+========================================================
+
+# Overview / Philosophy
+
+Most of the logic is defined in YAML files. So far we work on an R implementation, but it should be afterwards possible to write different implementations, e.g. in Julia without too much effort.
+
+# Options for storing data
+
+
+# Structures: Internal representation
+
+Structures and types are the key objects in ExpEconDB. A structure is a list with two fields:
+
+  - obj.li a list of all objects 
+  - df a data frame with some aggregate information about the objects, e.g.
+  
+```
+             name type.name size field.pos parent.pos expectValue      tree.path
+1 LureOfAuthority      game    8         1          0       FALSE               
+2          gameId    gameId    1         1          1       FALSE        .gameId
+3           label     label    1         2          1       FALSE         .label
+4            info      info    1         3          1       FALSE          .info
+5        articles    atomic    1         1          4       FALSE .info.articles
+6        variants  variants   18         4          1       FALSE      .variants
+```
+
+The data frame df is mainly used to find the positions of objects of certain types, like actions, in obj.li.
+
+## Structure objects
+
+A new structure is loaded with the function
+```{r eval=FALSE}
+  load.struct
+```
+First the structure is loaded as a simple list from the YAML file of the structure. Then  
+
+
+# Secret rules
+
+## Don't use nested composite variables or actions
+
+A variable shall not directly contain other variables as children. This would complicate naming and lifting of _if conditions. Of course, we need some way to express dependencies between variables that restrict their domain. 
+
+## All definitions of a variable have to be defined in the same stage
+
+So far our computation of stage.pos and the induced knowledge structure relies on this assumption.
+
+## A stage cannot be named "total"
+
+That is because, so far we generate a payoff variable payoff_total. 
+
+## No _if construction within a variable definition, except for "nicer"
+
+If the formula etc of a variable depends on some condition, we have to put the _if statement outside the variable definition.
+
+## The set of a variable is the same under all conditions
+
+
+# Special commands
+
+
+# Computing pure-strategy Nash equilibria and other behaviors
+
+### 1. Generate a variable-payoff structure (possible based on behaviors):
+
+A list of all variables and total payoffs. Each variable consists of a list that specifies the variable or payoff for different conditions. Payoffs and variables will be separated for different players. We can select specific behaviors for actions that will overwrite the specification of those actions.
+
+Done: Implemented by get.vvp.struct
+      
+### 2. Build a directed influence graph
+
+Go through payoffs and variables and add a directed influence edge for all other variables that influence it by appearing in formula, prob or condition. We know that the payoffs will always be terminal leafs in such a graph. 
+
+Done: Implemented by get.influence.graph
+Note: The graph should be acyclic. We test that in get.influence.graph. Otherwise the game structure is incorrect.
+
+### 3. Pick the actions that we want to optimize / for which we want to find equilibria
+
+All actions should be in the same stage.
+
+### 4. For each action split all variables in endogenous, exogenous and irrelevant
+
+- irrelevant: variables that have no path to payoffs in the influence graph
+- endogenous: variables that lie on a path between the action and the payoff. Payoffs also count as endogenous. 
+- exogenous: variables that are not endogenous and not irrelevant, i.e. they influence payoffs but do not depend on the action
+- action: the action itself
+
+**Warning:** Later stage actions must have been endogenised by having specified a behavior for them. This means we truly have to solve a game by backward induction: we must first solve for the equilibria of later stages.
+
+### 5. Determine knowledge of exogenous variables
+
+Specify which exogenous variables are known by the player when he takes the action. In pure strategy equilibria, other exogenous (simultaneously chosen) actions are assumed to be known.
+
+**Warning:** Solving for a Nash equilibrium with multiple simultaneously chosen actions, will work so far only if all players have the same knowledge about exogenous variables. Otherwise we have to deal with Bayesian Nash equilibria.
+
+**Temporary:** So far we just assume that all exogenous variables defined in earlier or the same stage are known. 
+
+### 6. Specify minimal set of known exogenous variables
+
+The union of all known exogenous variables that directly influence endogenous variables, unknown exogenous variables or the current action.
+
+Done: deduce.direct.indep.exo
+
+### 7. Specify the set of exogenous variables that directly affect endogenous, unknown exogenous and action
+
+Done: deduce.direct.indep.exo
+
+
+### 8. Get for each independent exogenous variable the set of values
+
+Done: add.var.sets
+
+### 8. Deduce the set of independent variations of exogenous variables
+
+Independent variables basically are: actions, move by natures (randomVariable), and the variant
+
+All other variables are dependent variables, i.e. their value is determined by some independent variables. 
+
+Temporary solution: get.payoff.var.grid just takes all combinations of indep.known.exo. Does not cut away combinations that lead to the same direct.known.exo 
+
+### 9. Deduce all variables for the grid
+
+The grid will contain independent exogenous variables, as well as all relevant random variables.
+
+#### Dependend Deterministic variables
+
+We basically can use the compute.variable approach. We only compute a variable if all required variables are computed for all conditions.
+
+#### Random variables
+
+  * **Assumption**: All specified random variables are i.i.d. distributed. Correlated random variables should be specified as deterministic functions of i.i.d. random variables. (This is restrictive, but probably covers most cases)
+
+  * Exogenous known random variables: Are already treated as independent and therefore part of the grid. No extra handling neccessary
+
+  * Endogenous random variables and unknown exogenous random variables:
+  We simply add all endogenous and unknown exogenous random variables to the grid. After all probabilities are determined, we can compute expected payoff by taking weighted means. This means the value stored for a random variable in a row is simply its probability.
+
+
+### Definition: Independent Variable
+
+Variant, every action for which no behavior is specified, every random variable (no matter whether endogenous or exogenous)
+
+
+### 10. Build irgid: independent - randomVariable grid
+
+Generate a big grid of all possible combinations of independent variables and realizations of dependent random variables 
+
+Done: get.indep.rand.grid
+
+### 11. Compute dgrid and pgrid
+
+  -**dgrid**: grid that adds to each row of irgrid the corresponding values of the deterministic determinist dependent variables
+  -**pgrid**: grid that stores for each row irgrid and each dependent random variabl the probability of the realization of the value of that random variable
+
+Done: compute.all.dependent
+
+
+### 12. Take expected values over payoffs in dgrid
+
+
+### 9. Solve for equilibria
+
+Given the expected payoff function, we can either manually solve for pure Nash equilibria or export the
+
+
+# Transforming into Gambit Extensive Form Game 
+   

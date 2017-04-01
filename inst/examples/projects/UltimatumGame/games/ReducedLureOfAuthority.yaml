@@ -1,0 +1,122 @@
+gameId: ReducedLureOfAuthority
+
+info:
+   label: Reduced Lure of Authority
+   articles: [fehr2013lure]
+
+variants:
+   LOW:
+      descr: Low Interest Alignment (40/20; 20/40)
+   HIGH:
+      descr: High Interest Alignment (40/35; 35/40)
+   PLOW:
+      descr: Principal has low aligned incentives (40/35; 20/40)
+   PHIGH:
+      descr:  Principal has high aligned incentives (40/20; 35/40)
+   HIGH_RAND:
+      descr: High Interest Alignment (40/35; 35/40). Random delegation 
+
+parameters:
+   numPlayers: 2
+   payoffVariant: 'str_split(variant,"_",1)'
+   piPRed:40
+   piABlue:40
+   'if payoffVariant == "PLOW"':
+      piPBlue:20
+      piARed:35
+   'if payoffVariant == "LOW"':
+      piPBlue:20
+      piARed:20
+   'if payoffVariant == "HIGH"':
+      piPBlue:35
+      piARed:35
+   'if payoffVariant == "PHIGH"':
+      piPBlue:35
+      piARed:20
+   PiRed: piPRed + piARed
+   PiBlue: piPBlue + piABlue
+   PiGreen: 20
+# Some parameters that specify different dimensions of the variants
+   justA: 'str_ends_with(variant,"JUSTA")'
+   justP: 'str_ends_with(variant,"JUSTP")'
+   randDelegate: 'str_contains(variant,"RAND")'
+   autoRec: 'str_contains(variant,"AUTOREC")'
+   noSubEff: 'str_contains(variant,"NOSUBEFF")'
+   playerDelegates: '!(justA | justP | randDelegate)'
+   P:1
+   A:2
+
+descr:
+   piPRed: Principal's payoff if her best card (red) is picked 
+   piABlue: Agent's payoff if his best card (blue) is picked
+   piPBlue: Principal's payoff if her second best card (blue) is picked
+   piARed: Agent's payoff if his second best card (red) is picked
+
+stages:
+   delegationChoicePlayer:
+      descr: P can delegate leadership to A or keep it
+      condition: playerDelegates
+      player: P
+      delegate:
+         set: [nodel,del]
+  delegationChoiceRandom:
+      descr: Nature decides on delegation
+      condition: randDelegate
+      delegate:
+         _type: sample
+         set: [nodel,del]
+   fixedDelegationChoice:
+      descr: Delegation is given by variant
+      condition: !randDelegate & !playerDelegates
+      delegate:
+         formula: "--"
+   computeRoles:
+      leader:
+         formula: 'ifelse( (delegate == "del" | justA) & (!justP),"A","P")'
+      follower:
+         formula: 'ifelse( (delegate == "del" | justA) & (!justP),"P","A")'
+   searchChoiceA:
+      descr: A chooses costly search intensity
+      observe: [delegate,leader, follower]
+      condition: !justP
+      player: A
+      searchA:
+         min:0
+         max:100
+         step:5
+   searchChoiceP:
+      descr: P chooses costly search intensity
+      observe: [delegate,leader, follower]
+      condition: !justA
+      player: P
+      searchP:
+         min:0
+         max:100
+         step:5
+   searchCosts:
+      searchCostsP:
+         formula:  'round(25*(searchP/100)^2,2)'
+      searchCostsA:
+         formula:  'round(25*(searchA/100)^2,2)'
+	shuffleAndSearchCards:
+      descr: Nature shuffles cards and determines players' search success. Sucessful player knows colors of all cards.
+		nature:
+			informedP:
+				_type: randomBool
+				trueProb: searchP/100
+			informedA:
+				_type: randomBool
+				trueProb: searchA/100
+	reducedPayoffStage:
+      descr: 'Leader picks card. Preferences over card colors: A: red>blue>green, B: blue>red>green'
+      gainP:
+         - [['piPBlue'], '(informedA) & (leader=="A" | !(informedP))']
+         - [['piPRed'], '(informedP) & (leader=="P" | !(informedA))']
+         - [['10'],'(!informedA) & (!informedP)']
+      gainA:
+         - [['piABlue'], '(informedA) & (leader=="A" | !(informedP))']
+         - [['piARed'], '(informedP) & (leader=="P" | !(informedA))']
+         - [['10'],'(!informedA) & (!informedP)']
+		payoffs:
+         1: gainP - searchCostsP
+         2: gainA - searchCostsA

@@ -1,0 +1,20 @@
+payoff:
+	payoff:
+		class: payoff
+		player: _all
+		prob: 1
+
+envy1:
+	envy1:
+		class: envy
+		player: _all
+		prob: 1
+		alpha: 1 # the degree of envy
+
+ineq15:
+	ineq15:
+		class: ineqAv
+		player: _all
+		prob: 1
+		alpha: 1 # the degree of envy
+		beta: 0.5 # the degree of guilt

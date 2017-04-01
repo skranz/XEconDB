@@ -1,0 +1,137 @@
+
+sfg:
+   parentType: main
+   fields:
+      - name: gameId
+        edit: false
+      - name: gameInfo
+      - name: variants
+        type: variant
+        mode: list
+        showMode: table
+      - name: parameters
+        mode: list
+        showMode: custom
+        type: parameter
+      - name: numPlayers
+        help: Number of players
+        type: integer
+        min: 1
+      - name: stages
+        mode: list
+        type: stage
+
+variant:
+  fields:
+    - name: name
+    - name: descr
+      type: text
+
+parameter:
+  fields:
+    - name: variant
+    - name: name
+    - name: formula
+
+stage:
+   fields:
+      - name: name
+        type: character
+      - name: player
+        type: integer
+        min: 1
+      - name: condition
+        type: condition
+      - name: observe
+        type: variable_set
+        multiple: true
+        onlyDefined: true
+        cases: true
+      - name: nature
+        type: randomVar
+        mode: list
+      - name: actions
+        types: [action, freetext, belief]
+        mode: list
+      - name: compute
+        type: computation
+        mode: list
+      - name: payoff
+        type: formula
+        eachPlayer: true
+
+gameInfo:
+   fields:
+      - name: label
+      - name: tags
+        setVar: gameTags
+      - name: descr
+      - name: articles
+      - name: variantOf
+
+gameTags: [ultimatum,intentions, public goods, punishment,dictator, gift exchange, prisoners dilemma]
+
+action:
+   fields:
+      - name: name
+        type: character
+      - name: set
+        type: formula
+        multiple: true
+      - name: min
+        type: numeric
+      - name: max
+        type: numeric
+      - name: step
+        type: numeric
+
+strategyMethod:
+   fields:
+      - name: name
+      - name: refActions
+        type: variable_set
+        multiple: true
+        help: On which variable shall the action depend?
+      - name: set
+        type: formula
+        multiple: true
+      - name: min
+        type: numeric
+      - name: max
+        type: numeric
+      - name: step
+        type: numeric
+
+freetext:
+  fields:
+     - name: name
+
+belief:
+  fields:
+     - name: name
+     - name: refVar
+       type: variable
+       help: Belief about which variable?
+
+
+randomVar:
+   fields:
+     - name: name
+     - name: set
+       type: formula
+       multiple: true
+       help: possible realizations of the variable
+     - name: probs:
+       type: numeric
+       multiple: true
+       help: >
+           Probability for each realization.
+           If empty all realizations are
+           equally likely.
+
+computation:
+  fields:
+    - name: name
+    - name: formula
+      type: formula
+      cases: true
