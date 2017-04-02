@@ -30,8 +30,16 @@ examples.vg.to.tg = function() {
   lev.li = tg$lev.li
 }
 
-vg.to.tg = function(vg, max.rows = Inf) {
+tg.msg.fun = function(...) {
+	cat(paste0("\n",...))
+}
+
+vg.to.tg = function(vg, max.rows = Inf, add.sg=TRUE, add.spi=TRUE, add.spo=FALSE, msg.fun = tg.msg.fun) {
   restore.point("vg.to.tg")
+	
+	if (is.null(msg.fun)) msg.fun = function(...) {}
+	msg.fun("Compute game tree for ", vg$gameId," variant ", vg$variant,"...")
+
   tg = new.env()
   tg$kel = vg$kel
   
@@ -60,7 +68,9 @@ vg.to.tg = function(vg, max.rows = Inf) {
 
   stage.num = 0
   while (stage.num < length(vg$stages)) {
+ 	
     stage.num = stage.num+1
+ 		msg.fun("Gametree for ", vg$gameId," variant ", vg$variant,": Add stage ", vg$stages[[stage.num]]$name, " (", NROW(tg$stage.df)," outcomes so far) ...")
     tg$kel$setKey("stages", stage.num)
     stage <- try(compute.tg.stage(stage.num, tg, vg, tg$kel))
     if (tg$kel$count>0) return(tg)
@@ -76,6 +86,7 @@ vg.to.tg = function(vg, max.rows = Inf) {
     }
     tg$stages[[stage.num]] = stage
   }
+ 	msg.fun("Game tree for ", vg$gameId," variant ", vg$variant,": All stages parsed (",NROW(tg$stage.df)," outcomes), compute info sets...")
   
   df = tg$stage.df
 
@@ -122,7 +133,21 @@ vg.to.tg = function(vg, max.rows = Inf) {
   
   # set payoff utility as standard
   set.tg.util(tg=tg)
-    
+  
+  if (add.sg) {
+  	msg.fun("Game tree for ", vg$gameId," variant ", vg$variant,": All stages parsed (",NROW(tg$stage.df)," outcomes), compute subgames...")
+  	compute.tg.subgames(tg)
+  }
+	if (add.spi) {
+	 	msg.fun("Game tree for ", vg$gameId," variant ", vg$variant,": All stages parsed (",NROW(tg$stage.df)," outcomes), compute spi...")
+		make.tg.spi.li(tg)
+	}
+	if (add.spo) {
+	 	msg.fun("Game tree for ", vg$gameId," variant ", vg$variant,": All stages parsed (",NROW(tg$stage.df)," outcomes), compute spo table...")
+  	make.tg.spo.li(tg)
+	}
+	 msg.fun("Game tree for ", vg$gameId," variant ", vg$variant,": completely generated.")
+
   return(tg)
 }
 

@@ -91,7 +91,7 @@ get.vg = function(variant=1, gameId = first.non.null(jg$gameId,rg$gameId), jg.ha
 	vg
 }
 
-get.tg = function(variant=first.non.null(vg$variant,1), gameId = first.non.null(vg$gameId,jg$gameId,rg$gameId), jg.hash = get.jg.hash(jg=jg, rg=rg,vg=vg),jg=NULL,rg=NULL, vg=NULL, tg=NULL, games.dir = get.games.dir(project.dir), project.dir = get.project.dir(), save.new = TRUE,max.rows = 1e8) {
+get.tg = function(variant=first.non.null(vg$variant,1), gameId = first.non.null(vg$gameId,jg$gameId,rg$gameId), jg.hash = get.jg.hash(jg=jg, rg=rg,vg=vg),jg=NULL,rg=NULL, vg=NULL, tg=NULL, games.dir = get.games.dir(project.dir), project.dir = get.project.dir(), save.new = TRUE,max.rows = 1e8,msg.fun=NULL, never.load = FALSE) {
 	if (!is.null(tg)) return(tg)
 	restore.point("get.tg")
 	
@@ -107,7 +107,7 @@ get.tg = function(variant=first.non.null(vg$variant,1), gameId = first.non.null(
 	
 	
 	file = file.path(games.dir, paste0(gameId,"_",variant, ".tg"))
-	if (file.exists(file)) {
+	if (file.exists(file) & !never.load) {
 		# return old vg if jg.hash has not changed
 		tg = readRDS(file)
 		if (identical(tg$jg.hash, jg.hash) | is.null(jg.hash))
@@ -116,9 +116,13 @@ get.tg = function(variant=first.non.null(vg$variant,1), gameId = first.non.null(
 
 	vg = get.vg(variant=variant, gameId=gameId, jg=jg, rg=rg, vg=vg, jg.hash=jg.hash, games.dir=games.dir)
 
-	tg = vg.to.tg(vg,max.rows = max.rows)
+	tg = vg.to.tg(vg,max.rows = max.rows, msg.fun=msg.fun)
 	if (save.new) {
+		if (!is.null(msg.fun)) msg.fun("Save game tree in ",file,"...")
 		saveRDS(tg, file)
+		if (!is.null(msg.fun)) {
+			msg.fun("Game tree saved as ",file, ".\n Size = ", file.size(file))
+		}
 	}
 	tg
 }

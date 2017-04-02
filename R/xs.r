@@ -4,12 +4,13 @@ xecon.glob = new.env()
 
 examples.xsApp = function() {
   projects.dir = "D:/libraries/XEconDB/projects"
-  app = xsApp(projects.dir)
+  app = xsApp(projects.dir, never.load.tg=TRUE)
+  viewApp(app)
   viewApp(app,launch.browser = TRUE)
 }
 
 
-xsApp = function(projects.dir, project=1, otree.dir=NULL, otree.url="http://localhost:8000") {
+xsApp = function(projects.dir, project=1, otree.dir=NULL, otree.url="http://localhost:8000", never.load.tg = FALSE) {
   restore.point("xsApp")
   
   library(shinyEventsUI)
@@ -22,6 +23,7 @@ xsApp = function(projects.dir, project=1, otree.dir=NULL, otree.url="http://loca
   xs$projects.dir = projects.dir
   xs$otree.dir = otree.dir
   xs$otree.url = otree.url
+  xs$never.load.tg = never.load.tg
   
   setwd(projects.dir)
   
@@ -342,6 +344,7 @@ xs.game.ui = function(gameId, xs = app$xs, app=getApp()) {
     actionButton(btnId,"Save"),
     actionButton(checkBtnId,"Check"),
     actionButton(ns("otreeBtn"),"To OTree"),
+    actionButton(ns("eqBtn"),"Equilibria"),
     actionButton(ns("gambitBtn"),"To Gambit"),
     uiOutput(ns("msg")),
   	# varpar table
@@ -359,6 +362,7 @@ xs.game.ui = function(gameId, xs = app$xs, app=getApp()) {
     callJS("xecon.parseAndSendGame",gameId,"check")
   })
   buttonHandler(ns("otreeBtn"),gameId=gameId,xs.to.otree.click)
+  buttonHandler(ns("eqBtn"),gameId=gameId,xs.eq.click)
   buttonHandler(ns("gambitBtn"),gameId=gameId,xs.to.gambit.click)
   
   eventHandler("parseGameEvent","parseGameEvent",function(mode,...) {
@@ -376,6 +380,12 @@ xs.game.ui = function(gameId, xs = app$xs, app=getApp()) {
   
   game$ui
 }
+
+xs.eq.click = function(gameId,...,xs=app$xs, app=getApp()) {
+  restore.point("xs.eq.click")
+	xs.show.eq.tab(gameId=gameId)
+}
+
 
 xs.to.gambit.click = function(gameId,...,xs=app$xs, app=getApp()) {
   restore.point("xs.to.gambit.click")

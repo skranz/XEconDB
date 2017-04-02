@@ -207,7 +207,7 @@ compute.tg.subgames = function(tg) {
 	
 	sg.df = df %>%
 		group_by(.sg.ind,.lev.num, .root.info.set.ind) %>%
-		summarize(.num.strats = prod(.num.moves), .num.players=length(unique(.player)))
+		summarize(.num.strats.without.desc = prod(ifelse(.in.descendant,1,.num.moves)), .num.strats = prod(.num.moves), .num.players=length(unique(.player)))
 
 	max.or.na = function(x) {
 		if (length(x)==0) return(NA)
