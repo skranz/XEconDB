@@ -224,7 +224,7 @@ rowProds = function(mat, cols = 1:NCOL(mat), default=NA) {
   } else {
     com = paste0("mat[,'",cols,"']", collapse="*")    
   }
-  parse.eval(com)
+  eval(parse(text=com))
   
 }
 

@@ -58,7 +58,7 @@ vg.to.tg = function(vg, max.rows = Inf, add.sg=TRUE, add.spi=TRUE, add.spo=FALSE
   tg$info.set.move.counter = 0
   
   
-  tg$stage.df = as.data.frame(tg$params)
+  tg$stage.df = as_data_frame(as.data.frame(tg$params,stringsAsFactors = FALSE))
   tg$stage.df$.prob = 1
   tg$know.li = lapply(1:tg$n,function(i) {
     mat = matrix(TRUE, 1, length(tg$params))

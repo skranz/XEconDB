@@ -1,7 +1,7 @@
 examples.make.tg.iso.df = function() {
   setwd("D:/libraries/XEconDB/projects/UltimatumGame")
-	tg = get.tg(gameId="BunchedUltimatum")
-	tg = get.tg(gameId="TwoChoices")
+	tg = get.tg(gameId="BunchedUltimatum", never.load=TRUE)
+	tg = get.tg(gameId="TwoChoices",never.load = TRUE)
 	set.tg.util(tg)
 	make.tg.iso.df(tg)
 	make.tg.ise.df(tg)
@@ -21,6 +21,7 @@ examples.make.tg.iso.df = function() {
 	make.tg.spo.li(tg)
 	
 	make.sg.spo.df(.sg.ind = 1,tg=tg)
+	tg$spo.li
 	
 	solve.all.tg.spe(tg=tg)
 	tg$spe.li
@@ -40,21 +41,22 @@ make.tg.iso.df = function(tg) {
 tg.to.iso.df = function(tg) {
   restore.point("tg.to.iso.df")  
   lev.li = tg$lev.li
-  oco.df = tg$oco.df
-  
+
   levels = which(sapply(lev.li, function(lev) lev$type=="action"))
   li = lapply(levels, function(le) {
-    lev.df.to.iso(lev=lev.li[[le]], oco.df = oco.df)
+    lev.df.to.iso(lev=lev.li[[le]])
   })
   iso.df = bind_rows(li)
-  iso.df = select(iso.df, .player, .lev.num,.info.set.ind, .info.set,.move.ind,.move.name, .infeasible)
+  #iso.df = select(iso.df, .player, .lev.num,.info.set.ind, .info.set,.move.ind,.move.name, .infeasible)
+	iso.df = select(iso.df, .player, .lev.num,.info.set.ind, .info.set,.move.ind,.var,.char.move.val)  
+  
   iso.df = arrange(iso.df, .player, .lev.num, .info.set.ind, .move.ind)
   iso.df
 }
 
 
 # computes the iso.df from a level.df
-lev.df.to.iso = function(lev, oco.df) {
+lev.df.to.iso = function(lev) {
   restore.point("lev.df.to.iso")
   
 	lev.df = lev$lev.df
@@ -69,10 +71,16 @@ lev.df.to.iso = function(lev, oco.df) {
     know.vars = lev$know.var.li[[kv]]
 
     by = unique(c(know.vars, lev$var))
+    
     idf = lev.df[rows,c(by,".move.ind",".info.set",".info.set.ind", ".player"), drop=FALSE]
-    idf$.move.name = as.character(lev.df[[lev$var]][rows])
+
+    idf$.char.move.val = as.character(lev.df[[lev$var]][rows])
     idf = unique(idf)
     
+    df = select(idf,.player,.info.set,.info.set.ind,.move.ind, .char.move.val)
+    return(df)
+    
+    # ommited compute infeasible
     jdf = left_join(idf, oco.df[,c(".outcome",by)], by=by)
     
     fun = function(idf) {
@@ -84,6 +92,7 @@ lev.df.to.iso = function(lev, oco.df) {
   })
   res = bind_rows(li)
   res$.lev.num = lev$lev.num
+  res$.var = lev$var
   
   res
 }
@@ -404,6 +413,23 @@ make.sg.spi = function(.sg.ind=1,tg, include.descendants=FALSE) {
 }
 
 
+find.info.set.outcomes = function(.info.set.ind, tg, oco.df = tg$oco.df, return.logical=FALSE) {
+	restore.point("find.info.set.outcomes")
+	
+	.lev.num = tg$ise.df$.lev.num[.info.set.ind]
+	lev = tg$lev.li[[.lev.num]]
+	row = which(lev$lev.df$.info.set.ind == .info.set.ind)[1]
+	keys = setdiff(colnames(lev$know.mat)[lev$know.mat[row,]],lev$var)
+	vals = as.list(lev$lev.df[row, keys])
+	
+	code = paste0('oco.df[["', keys,'"]] == vals[["',keys,'"]]', collapse=" & ")
+	if (!return.logical)
+		code = paste0("oco.df$.outcome[ ",code," ]")
+	call = parse(text=code)
+	
+	eval(call)
+}
+
 make.sg.spo.df = function(.sg.ind = 1, sg.df = tg$sg.df, sgi.df = tg$sgi.df, spi.df  = tg$spi.li[[.sg.ind]], tg) {
 	restore.point("make.sg.spo.df")	
 	
@@ -422,8 +448,89 @@ make.sg.spo.df = function(.sg.ind = 1, sg.df = tg$sg.df, sgi.df = tg$sgi.df, spi
 	# relevant outcomes for this subgame	
 	outcomes = sg.df$.outcomes[[1]]
 
+	oco.df = tg$oco.df[outcomes,,drop=FALSE]
+	
   n.sp = prod(spi$moves)
-  n.iso = NROW(spi)
+  n.ise = NROW(spi)
+  n.out = length(outcomes)
+
+  moves.df = sp.to.moves(sp = 1:n.sp, spi)
+  
+  # This matrix can be quite big
+  # If memory is a concern, we may split the matrix
+  # and the move.df in different chunks
+  # and apply the stuff for each chunk seperately
+  feas.mat = matrix(TRUE,n.sp,n.out )
+  
+  #iso.infeasible = iso.df$.infeasible
+
+  ise.ind = 1
+  move.ind = 1
+  iso.row = 0
+  for (ise.ind in seq_len(n.ise)) {
+  	# outcome values of the variable
+  	# that is decided at this info set
+  	.char.oco.val = as.character(oco.df[[iso.df$.var[iso.row+1] ]])
+  	is.ise.oco = find.info.set.outcomes(.info.set.ind = ise.df$.info.set.ind[ise.ind],tg = tg, oco.df=oco.df,return.logical = TRUE)
+  	
+  	#move.ind = 1
+    for (move.ind in seq_len(spi$moves[ise.ind])) {
+      iso.row = iso.row + 1
+      
+      .char.move.val = iso.df$.char.move.val[iso.row]
+      
+      #infeas = match(iso.infeasible[[iso.row]], outcomes)
+      # infeasible outcomes have a different
+      # value of the info set variable than
+      # the value of the current move
+      infeas = which(is.ise.oco & .char.oco.val != .char.move.val)
+      
+      rows = which(moves.df[,ise.ind]==move.ind)
+      feas.mat[rows,infeas] = FALSE
+    }
+  }
+  
+  spo = which(feas.mat,arr.ind = TRUE)
+  colnames(spo) = c("sp",".outcome")
+  spo = as.data.frame(spo)
+  spo$.outcome = outcomes[spo$.outcome]
+  spo = arrange(spo,sp,.outcome)
+  
+  # TO DO: Need to add .prob to oco.df!
+  #spo = inner_join(spo, select(tg$oco.df,.outcome, .prob, starts_with("payoff_")), by=".outcome")
+  spo = inner_join(spo, select(tg$oco.df,.outcome,.prob), by=".outcome")
+  
+  # add indices of other player strategy profiles
+  #for (player in 1:tg$params$numPlayers) {
+  #	sp_i = sp.to.sp_i(player=player, sp=spo$sp,spi=spi)
+  #	spo[[paste0("sp_",player)]] = sp_i
+  #}
+  
+  spo
+
+	
+}
+
+old.make.sg.spo.df = function(.sg.ind = 1, sg.df = tg$sg.df, sgi.df = tg$sgi.df, spi.df  = tg$spi.li[[.sg.ind]], tg) {
+	restore.point("make.sg.spo.df")	
+	
+	# we need to specify outcomes for each strategy profile
+	# of each subgame
+	sg.df = sg.df[sg.df$.sg.ind == .sg.ind,]
+	sgi.df = sgi.df[sg.df$.sg.ind == .sg.ind,]
+	spi = tg$spi.li[[.sg.ind]]
+	
+	.info.set.inds = spi$.info.set.ind
+	
+	ise.df = filter(tg$ise.df, .info.set.ind %in% .info.set.inds)
+	iso.df = filter(tg$iso.df, .info.set.ind %in% .info.set.inds)
+	
+
+	# relevant outcomes for this subgame	
+	outcomes = sg.df$.outcomes[[1]]
+
+  n.sp = prod(spi$moves)
+  n.ise = NROW(spi)
   n.out = length(outcomes)
 
   moves.df = sp.to.moves(sp = 1:n.sp, spi)
@@ -436,14 +543,14 @@ make.sg.spo.df = function(.sg.ind = 1, sg.df = tg$sg.df, sgi.df = tg$sgi.df, spi
   
   iso.infeasible = iso.df$.infeasible
 
-  iso.ind = 1
+  ise.ind = 1
   move.ind = 1
   iso.row = 0
-  for (iso.ind in seq.int(1,n.iso)) {
-    for (move.ind in seq.int(1,spi$moves[iso.ind])) {
+  for (ise.ind in seq.int(1,n.ise)) {
+    for (move.ind in seq.int(1,spi$moves[ise.ind])) {
       iso.row = iso.row + 1
       infeas = match(iso.infeasible[[iso.row]], outcomes)
-      rows = which(moves.df[,iso.ind]==move.ind)
+      rows = which(moves.df[,ise.ind]==move.ind)
       feas.mat[rows,infeas] = FALSE
     }
   }

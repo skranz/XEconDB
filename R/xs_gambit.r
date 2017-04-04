@@ -130,7 +130,7 @@ gambit.solve.eq = function(tg, mixed=FALSE, just.spe=TRUE, efg.file=tg.efg.file.
   
   # We have to inject these probabilties in our equilibrium template
   # tg$et.mat to generate an equilibrium data.frame eq.df
-  # eq.mat will have the same dimensions that oco.df
+  # eq.mat will have the same dimensions than oco.df
   # each cell describes the probability that the particluar move
   # takes place:
   # (eq. prob for actions, prob for move of nature, 1 for transformations)

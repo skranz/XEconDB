@@ -44,7 +44,7 @@ xs.eq.ui = function(gameId, xs = app$xs, app=getApp()) {
 		numericInput(ns("branchingLimit"),label="Branching limit",value = xeq$branching.limit),
 		helpText("Some game trees may be too large to handle. We stop generating the game tree if the number of branches in the current level has exceeded the branching limit."),
 		smallButton(ns("makeTgBtn"),"Generate Game Trees", "data-form-selector"=form.sel),
-		smallButton(ns("solveSpeBtn"),"Solve SPE", "data-form-selector"=form.sel),
+		smallButton(ns("solveSPEBtn"),"Solve SPE", "data-form-selector"=form.sel),
     uiOutput(ns("tgmsg")),
 		br(),
 		uiOutput(ns("tginfo"))
@@ -89,10 +89,16 @@ xs.eq.ui = function(gameId, xs = app$xs, app=getApp()) {
 		for (variant in xeq$sel.variants) {
 			msg = paste0("Solve for variant ",variant,"... ")
 			timedMessage(ns("tgmsg"),msg=msg)
-			tg = get.tg(gameId=gameId, variant=variant, rg=xeq$rg, msg.fun=msg.fun, never.load.tg=xs$never.load.tg)
+			tg = get.tg(gameId=gameId, variant=variant, rg=xeq$rg, msg.fun=msg.fun, never.load=FALSE)
+			msg = paste0("Make game matrices (spo tables) of all subgames for variant ",variant,"... ")
+			make.tg.spo.li(tg)
+			
+			msg = paste0("Solve all SPE for variant ",variant,"... ")
+			solve.all.tg.spe(tg)
+			
 			xeq$tg.li[[variant]] = tg
 		}
-		timedMessage(ns("tgmsg"),msg=paste0("Game trees generated..."))
+		timedMessage(ns("tgmsg"),msg=paste0("SPE have been generated..."))
 		info.df = xeq.tg.info.df(xeq=xeq)
 		html = html.table(info.df)
 		setUI(ns("tginfo"),HTML(html))
@@ -107,6 +113,7 @@ xs.eq.ui = function(gameId, xs = app$xs, app=getApp()) {
 xeq.tg.info.df = function(xeq, variants = xeq$sel.variants) {
 	restore.point("xeq.tg.info.df")
 	
+	tg = xeq$tg.li[[1]]
 	no.oco = lapply(variants, function(variant) {
 		tg = xeq$tg.li[[variant]]
 		if (is.null(tg)) return("-")
@@ -132,16 +139,30 @@ xeq.tg.info.df = function(xeq, variants = xeq$sel.variants) {
 		if (is.null(tg$sg.df)) return("?")
 		as.character(sum(tg$sg.df$.num.strats.without.desc))
 	})
+
+	no.eq = lapply(variants, function(variant) {
+		tg = xeq$tg.li[[variant]]
+		eq = tg$spe.li[[1]]
+		if (is.null(eq)) return("?")
+		as.character(NROW(eq$speq.df))
+	})
 	
-	
-	
-	mat = matrix(nrow=6, byrow = TRUE,c(
+	no.eqo = lapply(variants, function(variant) {
+		tg = xeq$tg.li[[variant]]
+		eq = tg$spe.li[[1]]
+		if (is.null(eq)) return("?")
+		as.character(NROW(eq$eqo.df))
+	})
+
+	mat = matrix(nrow=8, byrow = TRUE,c(
 		"Outcomes",no.oco,
 		"Info sets", no.ise,
 		"Subgames", no.sg,
 		"Strat-profiles...",rep("",length(variants)),
 		"...normal-form",no.all.sp,
-		"...backward-induction", no.sp
+		"...backward-induction", no.sp,
+		"Pure SPE", no.eq,
+		"Pure SPE outcomes", no.eqo
 	))
 	colnames(mat) = c("Variant",variants)
 	as.data.frame(mat)

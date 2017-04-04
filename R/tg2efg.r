@@ -139,7 +139,7 @@ util.df.to.gambit.txt = function(util.df=NULL) {
   #if (is.null(util.df))
   #  util.df = select(oco.df,starts_with("util_"))
   
-  payoff.str = paste.matrix.cols(as.matrix(util.df))
+  payoff.str = paste.matrix.cols(as.matrix(util.df),sep = ", ")
 # t "" 1 "Outcome 1" { 10.000000 2.000000 }
 # t "" 2 "Outcome 2" { 0.000000 10.000000 }
   txt = paste0('t ',
