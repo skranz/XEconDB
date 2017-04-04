@@ -2,12 +2,12 @@ example.gambit.solve.eq = function() {
 	# set working directory to project directory
   setwd("D:/libraries/XEconDB/projects/UltimatumGame/")
 	
-	gameId = "MaxUltimatum"
-	tg = get.tg(gameId = gameId,never.load = TRUE)
-
 	gameId = "Cournot"
-	tg = get.tg(gameId = gameId,never.load = TRUE)
-  eq.li = get.eq(tg)
+	gameId = "MaxUltimatum"
+	tg = get.tg(gameId = gameId,never.load = FALSE)
+
+	
+	eq.li = get.eq(tg)
 
 	  
   alpha = 0.371; beta=0.31

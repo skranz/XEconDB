@@ -22,6 +22,8 @@ init.xeq = function(gameId, branching.limit = 10000) {
 	xeq$rg = 	get.rg(gameId=gameId)
 	xeq$variants = xeq$rg$variants
 	xeq$tg.li = list()
+	xeq$eq.li = list()
+	xeq$eqo.li = list()
 	xeq
 }
 
@@ -47,7 +49,8 @@ xs.eq.ui = function(gameId, xs = app$xs, app=getApp()) {
 		smallButton(ns("solveSPEBtn"),"Solve SPE", "data-form-selector"=form.sel),
     uiOutput(ns("tgmsg")),
 		br(),
-		uiOutput(ns("tginfo"))
+		uiOutput(ns("tginfo")),
+		uiOutput(ns("eqsUI"))
 		
 	)
 	buttonHandler(ns("makeTgBtn"),function(formValues,...) {
@@ -79,7 +82,8 @@ xs.eq.ui = function(gameId, xs = app$xs, app=getApp()) {
 		variants = unlist(formValues[[ns("variants")]])
 		restore.point("solveSPEClick")
 		xeq$sel.variants = variants
-		
+		xeq$eqo.li = xeq$eq.li = list()
+
 		timedMessage(ns("tgmsg"),msg=paste0("Solve SPE for variants ",paste0(variants,collapse=", ")))
 		
 		msg.fun = function(...) {
@@ -87,22 +91,35 @@ xs.eq.ui = function(gameId, xs = app$xs, app=getApp()) {
 			timedMessage(ns("tgmsg"),msg=msg,millis = Inf)
 		}
 		for (variant in xeq$sel.variants) {
-			msg = paste0("Solve for variant ",variant,"... ")
+			msg = paste0("Create or load game tree for variant ",variant,"... ")
 			timedMessage(ns("tgmsg"),msg=msg)
 			tg = get.tg(gameId=gameId, variant=variant, rg=xeq$rg, msg.fun=msg.fun, never.load=FALSE)
-			msg = paste0("Make game matrices (spo tables) of all subgames for variant ",variant,"... ")
-			make.tg.spo.li(tg)
-			
-			msg = paste0("Solve all SPE for variant ",variant,"... ")
-			solve.all.tg.spe(tg)
-			
 			xeq$tg.li[[variant]] = tg
+			#msg = paste0("Create Gambit .efg file for ",variant,"... ")
+			#tg.to.efg(tg=tg)
+			msg = paste0("Solve all pure SPE for variant ",variant," with Gambit... ")
+			eq.li = get.eq(tg = tg)
+			xeq$eq.li[[variant]] = eq.li
+			
+			eqo = eq.outcomes(eq.li, tg=tg)
+			eqo$variant = variant
+			eqo = select(eqo, variant, everything())
+			
+			xeq$eqo.li[[variant]] = eqo
+			
 		}
 		timedMessage(ns("tgmsg"),msg=paste0("SPE have been generated..."))
 		info.df = xeq.tg.info.df(xeq=xeq)
 		html = html.table(info.df)
 		setUI(ns("tginfo"),HTML(html))
 		dsetUI(ns("tginfo"),HTML(html))
+		
+		eqo.df = bind_rows(xeq$eqo.li)
+		html = html.table(eqo.df)
+		ui = tagList(h5("Equilibrium outcomes:"), HTML(html))
+		setUI(ns("eqsUI"),ui)
+		dsetUI(ns("eqsUI"),ui)
+		
 	})
 	
 
@@ -141,17 +158,15 @@ xeq.tg.info.df = function(xeq, variants = xeq$sel.variants) {
 	})
 
 	no.eq = lapply(variants, function(variant) {
-		tg = xeq$tg.li[[variant]]
-		eq = tg$spe.li[[1]]
-		if (is.null(eq)) return("?")
-		as.character(NROW(eq$speq.df))
+		eq.li = xeq$eq.li[[variant]]
+		if (is.null(eq.li)) return("?")
+		as.character(length(eq.li))
 	})
 	
 	no.eqo = lapply(variants, function(variant) {
-		tg = xeq$tg.li[[variant]]
-		eq = tg$spe.li[[1]]
-		if (is.null(eq)) return("?")
-		as.character(NROW(eq$eqo.df))
+		eqo.df = xeq$eqo.li[[variant]]
+		if (is.null(eqo.df)) return("?")
+		as.character(NROW(eqo.df))
 	})
 
 	mat = matrix(nrow=8, byrow = TRUE,c(
