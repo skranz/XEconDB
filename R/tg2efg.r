@@ -24,7 +24,7 @@ get.tg.id = function(tg) {
 	util.funs.name = get.util.funs.name(tg$util.funs)
 	base.lab = paste0(tg$gameId,"_", tg$variant)
 	if (is.null(util.funs.name)) return(base.lab)
-	paste0(base.lab,"__",util.funs.name,"__")
+	paste0(base.lab,"__",paste0(util.funs.name,collapse="__"))
 }
 
 get.util.funs.name = function(util.funs) {
@@ -36,8 +36,8 @@ get.util.funs.name = function(util.funs) {
 		if (is.character(util.fun)) return(util.fun)
 		deparse1(util.fun)	
 	})
-	if (length(unique(names)==1)) return(unique(names))
-	if (identical(names,paste0("payoff_", seq_along(names)))) return("payoff")
+	if (length(unique(names))==1) return(unique(names))
+	if (all(str.starts.with(names,"payoff_"))) return("payoff")
 	return(paste0(names, collapse="_"))
 }
 

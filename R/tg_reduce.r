@@ -4,7 +4,9 @@
 # Check for dominant actions
 
 examples.reduce.tg = function() {
-  setwd("D:/libraries/XEconDB/projects/UltimatumGame/games")
+  setwd("D:/libraries/XEconDB/projects/UltimatumGame/")
+	gameId = "Cournot"
+	
   txt = readLines("GiftExchange.json")
   txt = readLines("Cournot.json")
   jg = fromJSON(txt,simplifyDataFrame = FALSE,simplifyMatrix = FALSE)$game
@@ -86,7 +88,7 @@ reduce.tg = function(tg) {
     lev.df = lev$lev.df
     lev$know.li = NULL
     if (lev$type == "action") {
-      # adapt info sets and move indeces for actions
+      # adapt info sets and move indices for actions
       lev.df$.info.set.move.ind = match(lev.df$.info.set.move.ind, org.move.inds)
       lev.df$.info.set.ind = match(lev.df$.info.set.ind, org.info.set.inds)
       lev.df = lev.df %>% 

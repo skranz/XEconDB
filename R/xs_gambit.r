@@ -3,11 +3,18 @@ example.gambit.solve.eq = function() {
   setwd("D:/libraries/XEconDB/projects/UltimatumGame/")
 	
 	gameId = "MaxUltimatum"
-	tg = get.tg(gameId = gameId)
-  
+	tg = get.tg(gameId = gameId,never.load = TRUE)
+
+	gameId = "Cournot"
+	tg = get.tg(gameId = gameId,never.load = TRUE)
+  eq.li = get.eq(tg)
+
+	  
   alpha = 0.371; beta=0.31
   util.funs = list(ineqAvUtil(1, alpha,beta),ineqAvUtil(2,alpha,beta))
 
+  eq.li = get.eq(tg)
+  
   eq.li = get.eq(tg, util.funs = util.funs)
   
   eq.li = get.eq(tg, util.funs = util.funs, just.spe=FALSE)
