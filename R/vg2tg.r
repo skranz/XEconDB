@@ -86,8 +86,42 @@ vg.to.tg = function(vg, max.rows = Inf, add.sg=TRUE, add.spi=TRUE, add.spo=FALSE
     }
     tg$stages[[stage.num]] = stage
   }
- 	msg.fun("Game tree for ", vg$gameId," variant ", vg$variant,": All stages parsed (",NROW(tg$stage.df)," outcomes), compute info sets...")
+ 	msg.fun("Game tree for ", vg$gameId," variant ", vg$variant,": All stages parsed (",NROW(tg$stage.df)," outcomes), finalize outcomes and et.mat...")
   
+ 	# compute et.mat, oco and other variables...
+ 	compute.tg.et.oco.etc(tg)
+
+  # know.var groups help to compute iso.df
+  # later on
+ 	msg.fun("Game tree for ", vg$gameId," variant ", vg$variant,": All stages parsed (",NROW(tg$stage.df)," outcomes), compute info sets...")
+
+ 	make.tg.know.var.groups(tg)
+  make.tg.ise.df(tg)
+  make.tg.iso.df(tg)
+  
+  # set payoff utility as standard
+  set.tg.util(tg=tg)
+  
+  if (add.sg) {
+  	msg.fun("Game tree for ", vg$gameId," variant ", vg$variant,": All stages parsed (",NROW(tg$stage.df)," outcomes), compute subgames...")
+  	compute.tg.subgames(tg)
+  }
+	if (add.spi) {
+	 	msg.fun("Game tree for ", vg$gameId," variant ", vg$variant,": All stages parsed (",NROW(tg$stage.df)," outcomes), compute spi...")
+		make.tg.spi.li(tg)
+	}
+	if (add.spo) {
+	 	msg.fun("Game tree for ", vg$gameId," variant ", vg$variant,": All stages parsed (",NROW(tg$stage.df)," outcomes), compute spo table...")
+  	make.tg.spo.li(tg)
+	}
+	 msg.fun("Game tree for ", vg$gameId," variant ", vg$variant,": completely generated.")
+
+  return(tg)
+}
+
+# will be called after all stages are parsed
+compute.tg.et.oco.etc = function(tg) {
+	restore.point("compute.tg.et.oco.etc")
   df = tg$stage.df
 
   # sort oco.df
@@ -124,31 +158,7 @@ vg.to.tg = function(vg, max.rows = Inf, add.sg=TRUE, add.spi=TRUE, add.spo=FALSE
   df = df[,cols, drop=FALSE]
   df$.outcome = seq.int(NROW(df))
   tg$oco.df = df
-
-  # know.var groups help to compute iso.df
-  # later on
-  make.tg.know.var.groups(tg)
-  make.tg.ise.df(tg)
-  make.tg.iso.df(tg)
-  
-  # set payoff utility as standard
-  set.tg.util(tg=tg)
-  
-  if (add.sg) {
-  	msg.fun("Game tree for ", vg$gameId," variant ", vg$variant,": All stages parsed (",NROW(tg$stage.df)," outcomes), compute subgames...")
-  	compute.tg.subgames(tg)
-  }
-	if (add.spi) {
-	 	msg.fun("Game tree for ", vg$gameId," variant ", vg$variant,": All stages parsed (",NROW(tg$stage.df)," outcomes), compute spi...")
-		make.tg.spi.li(tg)
-	}
-	if (add.spo) {
-	 	msg.fun("Game tree for ", vg$gameId," variant ", vg$variant,": All stages parsed (",NROW(tg$stage.df)," outcomes), compute spo table...")
-  	make.tg.spo.li(tg)
-	}
-	 msg.fun("Game tree for ", vg$gameId," variant ", vg$variant,": completely generated.")
-
-  return(tg)
+		
 }
 
 compute.tg.stage = function(stage.num, tg, vg, kel) {

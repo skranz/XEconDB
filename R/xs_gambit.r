@@ -197,6 +197,7 @@ eq.outcomes = function(eq.li, oco.df = tg$oco.df, tg=NULL, cond=NULL, compress=T
     u.li = unique(eqo.li)
     org.ind = match(eqo.li, u.li)
     eqo.li = lapply(seq_along(u.li), function(i) {
+    	restore.point("nsfndfn")
       eqo = u.li[[i]]
       eqo$eq.ind = replicate(NROW(eqo),which(org.ind==i), simplify=FALSE)
       eqo$eqo.ind = i

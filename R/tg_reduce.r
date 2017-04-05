@@ -5,24 +5,24 @@
 
 examples.reduce.tg = function() {
   setwd("D:/libraries/XEconDB/projects/UltimatumGame/")
+	gameId = "BunchedUltimatum"
 	gameId = "Cournot"
-	
-  txt = readLines("GiftExchange.json")
-  txt = readLines("Cournot.json")
-  jg = fromJSON(txt,simplifyDataFrame = FALSE,simplifyMatrix = FALSE)$game
-  rg = jg.to.rg(jg)
-  vg = rg.to.vg(rg,variant=1)
-  #vg = rg.to.vg(rg,variant=2)
-  tg = vg.to.tg(vg)
-  alpha = 0.75; beta=0.5
-  util.funs = list(ineqAvUtil(1, alpha,beta),ineqAvUtil(2,alpha,beta))
-  set.tg.util(tg, util.funs)
-  oco.df= tg$oco.df
-  
+	tg = get.tg(gameId = gameId)
   rtg = reduce.tg(tg)
-  oco.df = rtg$oco.df
+
+  eq.li = gambit.solve.eq(tg, just.spe=TRUE)
+  eqo.df = eq.outcomes(eq.li, tg=tg)
+
   
-  efg = tg.to.efg(rtg, path=getwd())
+  oco.df = tg$oco.df
+  roco.df = rtg$oco.df
+  
+  tg$ise.df
+  rtg$ise.df
+  
+  stage.df = rtg$stage.df
+  
+  efg = tg.to.efg(rtg)
   eq.li = gambit.solve.eq(rtg, just.spe=TRUE)
   eqo.df = eq.outcomes(eq.li, tg=rtg)
   eqo.df
@@ -38,13 +38,23 @@ reduce.tg = function(tg) {
   # TO DO:
   # Compute expected payoffs for 
   # each action profile (unique of paste.cols of et.mat)
-  # and use those for dominance
-  # allows better elimination even if there
+  # and use those for dominance.
+  # Allows better elimination even if there
   # are random moves of nature
   restore.point("reduce.tg")
   rtg = as.environment(as.list(tg))
   iteration = 0
   rtg$was.reduced = TRUE
+	rtg$variant = paste0(rtg$variant,"-reduced")
+  rtg$tg.id = get.tg.id(rtg)
+	
+  # store original level rows
+  # to later adapt know.li
+  for (lev.num in seq_along(tg$lev.li)) {
+  	rtg$lev.li[[lev.num]]$lev.df$.org.row = seq_len(NROW(rtg$lev.li[[lev.num]]$lev.df))
+
+  }
+  
   
   # iteratievly eliminate strictly
   # dominated moves at action levels
@@ -65,6 +75,127 @@ reduce.tg = function(tg) {
       }
     }
   }
+  
+  
+  # renumber .info.set.moves in all action lev.df
+  # and adapt know.li
+  info.set.offset = 0
+  move.offset = 0
+  
+  for (lev.num in seq_along(rtg$lev.li)) {
+		lev = rtg$lev.li[[lev.num]]
+    lev.df = lev$lev.df
+    
+    if (lev$type == "action") {
+      # adapt info sets and move indices for actions
+      lev.df$.info.set.move.ind = id.to.index(lev.df$.info.set.move.ind) + move.offset
+      lev.df$.info.set.ind = id.to.index(lev.df$.info.set.ind) + info.set.offset
+      
+      move.offset = max(lev.df$.info.set.move.ind)
+      info.set.offset = max(lev.df$.info.set.ind)
+      
+      lev.df = lev.df %>% 
+        arrange(.info.set.move.ind) %>% 
+        group_by(.info.set.ind) %>%
+        mutate(.move.ind = id.to.index(.info.set.move.ind)) %>%
+        ungroup()
+    } else if (lev$type == "nature") {
+      # remove rows from nature
+      join.cols = unique(sapply(tg$lev.li[1:lev$lev.num], function(ilev) ilev$var))
+      lev.df = semi_join(lev.df,rtg$oco.df, by=join.cols)
+    }
+    # adapt know.li 
+    for (i in seq_along(lev$know.li)) {
+    	lev$know.li[[i]] = lev$know.li[[i]][lev.df$.org.row,,drop=FALSE]
+    }
+    lev$lev.df = lev.df
+    
+    rtg$lev.li[[lev.num]] = lev
+  }
+  
+  num.levs = length(rtg$lev.li)
+  lev.df = rtg$lev.li[[num.levs]]$lev.df
+  key.col = paste0(".row.", num.levs)
+  rows = match(lev.df[[key.col]], tg$stage.df[[key.col]])
+  stage.df = tg$stage.df[rows,,drop=FALSE]
+  cols = intersect(colnames(stage.df), colnames(lev.df))
+	stage.df[,cols] = lev.df[,cols,drop=FALSE]
+  rtg$stage.df = stage.df
+  
+  # adapt .row.1 .row.2. etc in all lev.df
+  row.inds = lapply(seq_along(rtg$lev.li), function(lev.num) {
+  	unique(rtg$lev.li[[lev.num]]$lev.df[[paste0(".row.",lev.num)]])
+  })
+  for (i in seq_along(rtg$lev.li)) {
+  	lev.df = rtg$lev.li[[i]]$lev.df
+  	for (j in 1:i) {
+  		lev.df[[paste0(".row.",j)]] = match(lev.df[[paste0(".row.",j)]], row.inds[[j]])
+  	}
+  	rtg$lev.li[[i]]$lev.df = lev.df
+  }
+	# adapat stage.df .row.
+  for (j in seq_along(rtg$lev.li)) {
+  	rtg$stage.df[[paste0(".row.",j)]] = match(rtg$stage.df[[paste0(".row.",j)]], row.inds[[j]])
+  }
+
+  
+	compute.tg.et.oco.etc(rtg)
+  
+  # know.var groups help to compute iso.df
+  # later on
+  make.tg.know.var.groups(rtg)
+  make.tg.ise.df(rtg)
+  make.tg.iso.df(rtg)
+  
+  # set payoff utility as standard
+  set.tg.util(tg=rtg)
+  compute.tg.subgames(rtg)
+	make.tg.spi.li(rtg)
+
+  rtg
+}
+
+
+old.reduce.tg = function(tg) {
+  # TO DO:
+  # Compute expected payoffs for 
+  # each action profile (unique of paste.cols of et.mat)
+  # and use those for dominance.
+  # Allows better elimination even if there
+  # are random moves of nature
+  restore.point("reduce.tg")
+  rtg = as.environment(as.list(tg))
+  iteration = 0
+  rtg$was.reduced = TRUE
+  
+  # store original level rows
+  # to later adapt know.li
+  for (lev.num in seq_along(tg$lev.li)) {
+  	tg$lev.li[[lev.num]]$lev.df$.org.row = seq_len(NROW(tg$lev.li[[lev.num]]$lev.df))
+
+  }
+  
+  # iteratievly eliminate strictly
+  # dominated moves at action levels
+  # stops when no elimination took place
+  # in any action level
+  while(rtg$was.reduced & iteration <2000) {
+    iteration = iteration +1
+    rtg$was.reduced = FALSE
+    lev.num = length(tg$lev.li)+1
+    while (lev.num >1) {
+      lev.num = lev.num-1
+      if (lev.num==1 & !rtg$was.reduced & iteration>1) {
+        break
+      }
+      lev = rtg$lev.li[[lev.num]]
+      if (lev$type == "action") {
+        reduce.action.level(lev,rtg, tg, iteration=iteration)
+      }
+    }
+  }
+  
+  
   oco.df = rtg$oco.df
   cols = colnames(rtg$oco.df)
   rcols = setdiff(cols[str.starts.with(cols,".")],".outcome")
@@ -86,7 +217,7 @@ reduce.tg = function(tg) {
     restore.point("inner.rtg.reduce")
     
     lev.df = lev$lev.df
-    lev$know.li = NULL
+    
     if (lev$type == "action") {
       # adapt info sets and move indices for actions
       lev.df$.info.set.move.ind = match(lev.df$.info.set.move.ind, org.move.inds)
@@ -102,6 +233,11 @@ reduce.tg = function(tg) {
       lev.df = semi_join(lev.df,rtg$oco.df, by=join.cols)
     }
     lev$lev.df = lev.df
+    # adapt know.li 
+    for (i in seq_along(lev$know.li)) {
+    	lev$know.li[[i]] = lev$know.li[[i]][lev.df$.org.row,,drop=FALSE]
+    }
+    
     lev
   })  
   # adapt et.mat
@@ -112,8 +248,20 @@ reduce.tg = function(tg) {
   rtg$oco.df$.org.outcome = rtg$oco.df$.outcome
   rtg$oco.df$.outcome = seq.int(NROW(rtg$oco.df))
   
+  # know.var groups help to compute iso.df
+  # later on
+  make.tg.know.var.groups(rtg)
+  make.tg.ise.df(rtg)
+  make.tg.iso.df(rtg)
+  
+  # set payoff utility as standard
+  set.tg.util(tg=rtg)
+  compute.tg.subgames(rtg)
+	make.tg.spi.li(rtg)
+
   rtg
 }
+
 
 reduce.action.level = function(lev,rtg,tg, iteration=1) {
   

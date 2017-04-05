@@ -46,7 +46,7 @@ xs.eq.ui = function(gameId, xs = app$xs, app=getApp()) {
 		numericInput(ns("branchingLimit"),label="Branching limit",value = xeq$branching.limit),
 		helpText("Some game trees may be too large to handle. We stop generating the game tree if the number of branches in the current level has exceeded the branching limit."),
 		smallButton(ns("makeTgBtn"),"Generate Game Trees", "data-form-selector"=form.sel),
-		smallButton(ns("solveSPEBtn"),"Solve SPE", "data-form-selector"=form.sel),
+		smallButton(ns("solveSPEBtn"),"Solve Pure SPE", "data-form-selector"=form.sel),
     uiOutput(ns("tgmsg")),
 		br(),
 		uiOutput(ns("tginfo")),
@@ -70,9 +70,15 @@ xs.eq.ui = function(gameId, xs = app$xs, app=getApp()) {
 			timedMessage(ns("tgmsg"),msg=msg)
 			tg = get.tg(gameId=gameId, variant=variant, rg=xeq$rg, msg.fun=msg.fun, never.load=xs$never.load.tg)
 			xeq$tg.li[[variant]] = tg
+			
+			rtg = reduce.tg(tg)
+			xeq$tg.li[[paste0(variant,".reduced")]] = rtg
+			
 		}
+		rvariants = c(variants,paste0(variants,".reduced"))
+
 		timedMessage(ns("tgmsg"),msg=paste0("Game trees generated..."))
-		info.df = xeq.tg.info.df(xeq=xeq)
+		info.df = xeq.tg.info.df(xeq=xeq, variants=rvariants)
 		html = html.table(info.df)
 		setUI(ns("tginfo"),HTML(html))
 		dsetUI(ns("tginfo"),HTML(html))
@@ -93,11 +99,14 @@ xs.eq.ui = function(gameId, xs = app$xs, app=getApp()) {
 		for (variant in xeq$sel.variants) {
 			msg = paste0("Create or load game tree for variant ",variant,"... ")
 			timedMessage(ns("tgmsg"),msg=msg)
-			tg = get.tg(gameId=gameId, variant=variant, rg=xeq$rg, msg.fun=msg.fun, never.load=FALSE)
+			tg = get.tg(gameId=gameId, variant=variant, rg=xeq$rg, msg.fun=msg.fun, never.load=TRUE)
 			xeq$tg.li[[variant]] = tg
+			
+
 			#msg = paste0("Create Gambit .efg file for ",variant,"... ")
 			#tg.to.efg(tg=tg)
 			msg = paste0("Solve all pure SPE for variant ",variant," with Gambit... ")
+			msg.fun(msg)
 			eq.li = get.eq(tg = tg)
 			xeq$eq.li[[variant]] = eq.li
 			
@@ -106,17 +115,36 @@ xs.eq.ui = function(gameId, xs = app$xs, app=getApp()) {
 			eqo = select(eqo, variant, everything())
 			
 			xeq$eqo.li[[variant]] = eqo
+
+			msg = paste0("Reduce game and compute SPE for variant ",variant," with Gambit... ")
+			msg.fun(msg)
+			
+			rtg = reduce.tg(tg)
+			rvariant = rtg$variant
+			xeq$tg.li[[rvariant]] = rtg
+			
+			eq.li = get.eq(tg = rtg)
+			xeq$eq.li[[rvariant]] = eq.li
+			
+			eqo = eq.outcomes(eq.li, tg=rtg)
+			eqo$variant = rvariant
+			eqo = select(eqo, variant, everything())
+			
+			xeq$eqo.li[[rvariant]] = eqo
 			
 		}
 		timedMessage(ns("tgmsg"),msg=paste0("SPE have been generated..."))
-		info.df = xeq.tg.info.df(xeq=xeq)
+		
+		rvariants = names(xeq$eqo.li)
+		
+		info.df = xeq.tg.info.df(xeq=xeq, variants = rvariants)
 		html = html.table(info.df)
 		setUI(ns("tginfo"),HTML(html))
 		dsetUI(ns("tginfo"),HTML(html))
 		
 		eqo.df = bind_rows(xeq$eqo.li)
 		html = html.table(eqo.df)
-		ui = tagList(h5("Equilibrium outcomes:"), HTML(html))
+		ui = tagList(h5("Pure SPE outcomes:"), HTML(html))
 		setUI(ns("eqsUI"),ui)
 		dsetUI(ns("eqsUI"),ui)
 		
