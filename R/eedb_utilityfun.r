@@ -175,3 +175,12 @@ examples.loss.aversion.util.fun = function() {
   plot(diff(u))
   abline(a=0,b=1,col="red")
 }
+
+WSumMin = function(player=1,min_weight=1,n=2) {
+	sum = paste0("payoff_",seq_len(n), collapse="+")
+	min = paste0("pmin(",paste0("payoff_",seq_len(n),collapse=", "),")")
+	u = paste0(sum," + ", min_weight, " * ", min)
+	names(u) = paste0("W_SumMin_",min_weight)
+	u
+		
+}

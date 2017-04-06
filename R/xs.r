@@ -67,21 +67,18 @@ xs.init.project = function(project,xs) {
   
   
   xs$project = project
-  xs.load.games(xs)
+  xs.get.gamesId(xs)
   
 }
 
-xs.load.games = function(xs) {
-  restore.point("xs.load.games")
+xs.get.gamesId = function(xs) {
+  restore.point("xs.get.gamesId")
   
   if (is.null(xs$project)) return(NULL)
   gamesId = list.files(paste0(xs$project,"/games"), pattern=glob2rx("*.json"), full.names=FALSE)
   gamesId = str.remove.ends(gamesId,0,5)
   xs$gamesId = gamesId
-  xs$games = lapply(gamesId, function(gameId) {
-    as.environment(list(gameId=gameId))
-  })  
-  names(xs$games) = gamesId
+  gamesId
 }
 
 
@@ -234,7 +231,6 @@ xs.update.project.tree = function(xs=app$xs, app=getApp()) {
 xs.delete.game = function(gameId, xs = app$xs, app=getApp()) {
   restore.point("xs.delete.game")
   xs$gamesId = setdiff(xs$gamesId, gameId)
-  xs$games = xs$games[xs$gamesId]
 
   file = file.path(xs$games.dir,paste0(gameId,".json"))
   try(file.remove(file))
@@ -247,12 +243,11 @@ xs.new.game = function(gameId="NewGame", xs=app$xs, app=getApp(), json=NULL) {
   restore.point("xs.new.game")
   
   if (is.null(json))
-    json = empty.jg(gameId)
+    json = empty.jg.json(gameId)
   
   file = file.path(xs$games.dir,paste0(gameId,".json"))
   writeLines(json, file)
   
-  xs$games[[gameId]] = as.environment(list(gameId=gameId))
   xs$gamesId = unique(c(xs$gamesId,gameId))
   xs.show.game.tab(gameId)
   xs.update.project.tree()
@@ -263,16 +258,14 @@ xs.duplicate.game = function(gameId, xs=app$xs, app=getApp()) {
 	cat("\nduplicate game", gameId,"\n")
 	
 	index=2
-	while((newId <- paste0(gameId,index)) %in% names(xs$games)) index = index+1
+	while((newId <- paste0(gameId,index)) %in% xs$gamesId) index = index+1
 	
-	game=xs$games[[gameId]]
-	content = game$content
-	content$game$gameId = newId
 	
-	json = toJSON(content,auto_unbox = TRUE)
-
+	jg = get.jg(gameId)
+	jg$gameId = newId
+	
+	json = jg.to.json(jg)
 	xs.new.game(gameId=newId,json=json, xs=xs)
-	 
 }
 
 xs.show.game.tab = function(gameId, xs=app$xs, app=getApp()) {
@@ -293,38 +286,22 @@ xs.show.game.tab = function(gameId, xs=app$xs, app=getApp()) {
   w2tabs.select("xsTabs", tabId)
 }
 
-xs.load.game.content = function(gameId, xs = app$xs, app=getApp()) {
-  restore.point("xs.load.game.content")
-  game = xs$games[[gameId]]
-  game$content.json = merge.lines(readLines(paste0(xs$games.dir,"/",gameId,".json"),warn = FALSE))
-  game$content = try(fromJSON(game$content.json,simplifyDataFrame = FALSE,simplifyMatrix = FALSE,simplifyVector = FALSE))
-  
-  #varpar = game$content$game$varpar
-  #game$content$game$tvarpar = t(do.call(rbind, varpar))
-  #game$content.json = toJSON(game$content)
-  
-  game$content.error = is(game$content, "try-error")
-  game$error.msg = as.character(game$content)
-  game
-}
 
 xs.game.ui = function(gameId, xs = app$xs, app=getApp()) {
   restore.point("xs.game.edit.ui")
-  game = xs$games[[gameId]]
   ns = NS(gameId)
   
-  # always reload content
-  game = xs.load.game.content(gameId=gameId)
-  xs$games[[gameId]] = game
-  if (game$content.error) {
-    game$ui = tagList(h4("Error when parsing json file:"), p(as.character(game$error.msg)))
-    return(game$ui)
+	jg = try(get.jg(gameId))   
+  if (is(jg,"try-error")) {
+    ui = tagList(h4("Error when parsing json file:"), p(as.character(jg)))
+    return(ui)
   }
 
-  game$varparId = paste0("xsVarPar_",gameId)
-  game$treeId = paste0("xsGameTree_",gameId)
+  varparId = paste0("xsVarPar_",gameId)
+ 	treeId = paste0("xsGameTree_",gameId)
+  json = jg.to.json(jg)
   
-  table = paste0('<table id="',game$treeId,'"  width="">
+  table = paste0('<table id="',treeId,'"  width="">
     <colgroup>
     <col></col>
     <col></col>
@@ -339,8 +316,8 @@ xs.game.ui = function(gameId, xs = app$xs, app=getApp()) {
 
   btnId = paste0("saveBtn_",gameId)
   checkBtnId = paste0("checkBtn_",gameId)
-  js = paste0('xecon.initGame("',gameId,'",',game$content.json,')')
-  game$ui = tagList(
+  js = paste0('xecon.initGame("',gameId,'",',json,')')
+  ui = tagList(
     actionButton(btnId,"Save"),
     actionButton(checkBtnId,"Check"),
     actionButton(ns("otreeBtn"),"To OTree"),
@@ -348,7 +325,7 @@ xs.game.ui = function(gameId, xs = app$xs, app=getApp()) {
     actionButton(ns("gambitBtn"),"To Gambit"),
     uiOutput(ns("msg")),
   	# varpar table
-		#HTML(paste0('<div id="',game$varparId,'"></div>')),
+		#HTML(paste0('<div id="',varparId,'"></div>')),
   	# game tree
     div(
       HTML(table)
@@ -378,7 +355,7 @@ xs.game.ui = function(gameId, xs = app$xs, app=getApp()) {
     print(content)
   })
   
-  game$ui
+  ui
 }
 
 xs.eq.click = function(gameId,...,xs=app$xs, app=getApp()) {
@@ -390,12 +367,8 @@ xs.eq.click = function(gameId,...,xs=app$xs, app=getApp()) {
 xs.to.gambit.click = function(gameId,...,xs=app$xs, app=getApp()) {
   restore.point("xs.to.gambit.click")
   ns = NS(gameId)
-  game = xs.load.game.content(gameId)
-  if (game$content.error) {
-    timedMessage(ns("msg"),paste0("Error when parsing .json file of the game:", game$error.msg))
-    return()
-  }
-	jg = game$content$game
+  
+	jg = get.jg(gameId)
 	
 	timedMessage(ns("msg"),paste0("Create Gambit extensive form games..."),millis=Inf)
 	
@@ -415,13 +388,8 @@ xs.to.gambit.click = function(gameId,...,xs=app$xs, app=getApp()) {
 xs.to.otree.click = function(gameId,...,xs=app$xs, app=getApp()) {
   restore.point("xs.to.otree.click")
   ns = NS(gameId)
-  game = xs.load.game.content(gameId)
-  if (game$content.error) {
-    timedMessage(ns("msg"),paste0("Error when parsing .json file of the game:", game$error.msg))
-    return()
-  }
+  jg = get.jg(gameId)
   timedMessage(ns("msg"),"Export to otree...", millis = Inf)
-  jg = game$content$game
   jg.to.otree(jg, otree.dir = xs$otree.dir, msg.id=ns("msg"))  
   timedMessage(ns("msg"),"Export to otree... all files written.")
   
@@ -534,3 +502,58 @@ js.call = function(.fun,...,.args=list(...), .json.args = lapply(.args, r.to.js.
   code
 }
 
+jg.to.json = function(jg) {
+	toJSON(list(game=jg),auto_unbox = TRUE)
+}
+
+# an empty game with given gameId
+empty.jg.json = function(gameId) {
+  paste0('
+  {"game": {
+    "gameId": "', gameId,'",
+    "gameInfo": {
+        "label": "",
+        "tags": "",
+        "descr": "",
+        "articles": "",
+        "variantOf": ""
+    },
+    "varpar": [
+        [
+            "variants<U+2193> params<U+2192>",
+            "numPlayers",
+            "descr"
+        ],
+        [
+            "base",
+            "2",
+            "The base variant"
+        ]
+    ],
+    "stages": [
+       {
+            "name": "resultsStage",
+            "player": "[1,2]",
+            "condition": "",
+            "observe": "",
+            "nature": [],
+            "actions": [],
+            "special": {
+                "beliefs": [],
+                "freetext": []
+            },
+            "compute": [
+                {
+                    "name": "payoff_1",
+                    "formula": "=0"
+                },
+                {
+                    "name": "payoff_2",
+                    "formula": "=0"
+                }
+            ]
+        }
+    ]
+}}
+  ')
+}

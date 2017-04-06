@@ -56,3 +56,19 @@ unifLossAv:
 			descr: degree of loss aversion
 			default: 2
 	fun: unifLossAvUtil
+
+WSumMin:
+	descr: > 
+		All players maximize total welfare W
+		defined as the sum of all payoffs plus
+		min_weight times the minimal payoff
+	defaultName: 'WSumMin_1'
+	params:
+		min_weight:
+			descr: |
+				The weight on the minimal payoff.
+				The sum of payoffs always gets a weight of 1.
+				For min_weight = 0, we have pure utiltarian
+				welfare (given payoff pref)
+			default: 1
+	fun: WSumMin
