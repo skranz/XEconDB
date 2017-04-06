@@ -1,6 +1,10 @@
 # Some utility function that transform payoffs
+examples.utility.fun = function() {
+	ineqAvUtil()
+}
 
-payoffUtil = function(player=1) {
+
+payoffUtil = function(player=1,n=NULL) {
 	paste0("payoff_",player)
 }
 
@@ -69,35 +73,56 @@ example.get.envy.util = function() {
 
 # Loss aversion utility with a continuous multiple reference point that 
 # is uniformely distributed between start and end. Normalized such that material payoffs of 0 remain 0
-unifLossAvUtil = function(player=1,rmin=0,rmax=1,lambda=2) {
+unifLossAvUtil = function(player=1,rmin=0,rmax=1,lambda=2,n=NULL) {
+	restore.point("unifLossAvUtil")
   start = rmin; end = rmax
   util = sapply(player,function(i) {
     x = paste0("payoff_",i)
-    u.start = ((lambda-1)*start^2)/(2*(end-start))+lambda*start
-    u.end = lambda*end-((lambda-1)*(end^2/2-end*start))/(end-start)
     
-    paste0("
+    if (is.numeric(start) & is.numeric(end)) {
+    	u.start = ((lambda-1)*start^2)/(2*(end-start))+lambda*start
+    	u.end = lambda*end-((lambda-1)*(end^2/2-end*start))/(end-start)
+    	code.start = ""
+    } else {
+    	code.start = paste0(
+    		".start = ", start,";\n .end = ",end,";\n" 
+    	)
+  		start = ".start"
+  		end = ".end"
+  
+    	u.start = paste0("((",lambda,"-1)*",start,"^2)/(2*(",end,"-",start,"))+",lambda,"*",start)
+    	u.end = paste0(lambda,"*",end,"-((",lambda,"-1)*(",end,"^2/2-",end,"*",start,"))/(",end,"-",start,")")
+    }
+   
+    
+    code = paste0("{",code.start,"\n
   ifelse(",x,">",end,",",u.end,"+(",x,"-",end,"),
     ifelse(",x,"<",start,",",u.start,"-",lambda,"*(",start,"-",x,"),
-       ",lambda,"*",x,"-((",lambda,"-1)*(",x,"^2/2-",start,"*",x,"))/(",end-start,")
+       ",lambda,"*",x,"-((",lambda,"-1)*(",x,"^2/2-",start,"*",x,"))/(",end,"-",start,")
     )
-  )")
+  )}")
   })
   
-  lab = paste0("unifLossAv_start",start,"_end",end,"_lambda",lambda)
+  if (is.character(start)) {
+   	lab = paste0("unifLossAv_lambda",lambda)
+  } else {
+  	lab = paste0("unifLossAv_start",start,"_end",end,"_lambda",lambda)
+  }
   names(util)=rep(lab,length(player))
+  util = replace.payoff_i.in.util(util)
   util
 }
 
 # Loss aversion utility with a continuous multiple reference point that 
 # is uniformely distributed between start and end. Normalized such that material payoffs of 0 remain 0
-lossAvUtil = function(player=1,r,lambda=2) {
+lossAvUtil = function(player=1,r,lambda=2,n=NULL) {
   r.str = paste0("c(",paste0(r, collapse=","),")")
   x = paste0("payoff_",player)
   util = paste0("loss.aversion.util(",x,",r=",r.str,",lambda=",lambda,")")
   
   lab = paste0("lossAv_r",r,"_lambda",lambda)
   names(util)=rep(lab,length(player))
+  util = replace.payoff_i.in.util(util)
   util
 }
 
@@ -132,6 +157,13 @@ loss.aversion.util.fun = function(x,r,lambda=2,n=2) {
   u = apply(um,1,mean)
   return(u)  
   
+}
+
+replace.payoff_i.in.util = function(utils.str) {
+	for (i in seq_along(utils.str)) {
+		utils.str = gsub("payoff_i",paste0("payoff_",i), utils.str,fixed=TRUE)
+	}
+	utils.str
 }
 
 examples.loss.aversion.util.fun = function() {

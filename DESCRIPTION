@@ -8,10 +8,10 @@ Maintainer: Sebastian Kranz <sebastian.kranz@uni-ulm.de>
 Description: Tools for generating and exploring the Experimental Economics Database. So far this database does not yet exist. But these tools shall help to make it happen.
 License: Not yet licenced
 Depends:
-  restorepoint,yaml,stringtools,igraph,
-  data.table,dplyr, dplyrExtras, sktools,
-  shiny, shinyAce, shinyBS, TableTree, YamlObjects, InfluenceGraph,
-  shinyEvents, shinyEventsUI, hwriter, codeUtils, tidyr, digest,
+  restorepoint,yaml,stringtools,
+  data.table,dplyr, dplyrExtras, 
+  shiny, shinyAce, shinyBS,
+  shinyEvents, shinyEventsUI, codeUtils, tidyr, digest,
   whisker,markdown, rmdtools
 Imports: Rcpp (>= 0.11.0)
 LinkingTo: Rcpp

@@ -17,8 +17,8 @@ xs.show.eq.tab = function(gameId, xs=app$xs, app=getApp()) {
 }
 
 
-init.xeq = function(gameId, branching.limit = 10000) {
-	xeq = as.environment(nlist(gameId, branching.limit))
+init.xeq = function(gameId, branching.limit = 10000, sp.limit=1e6) {
+	xeq = as.environment(nlist(gameId, branching.limit,sp.limit))
 	xeq$rg = 	get.rg(gameId=gameId)
 	xeq$variants = xeq$rg$variants
 	xeq$tg.li = list()
@@ -34,17 +34,25 @@ xs.eq.ui = function(gameId, xs = app$xs, app=getApp()) {
 	ns = NS(paste0("eq-",gameId))
 	
 	xeq = init.xeq(gameId)
+	xeq$ns = ns
 	xs$xeq = xeq
 	
 	rg = xeq$rg
+	
+	xeq$prefs = pref.classes.default.prefs()
 		
-	form.sel = ids2sel(c(ns("variants"),ns("branchingLimit"))) 
+	form.sel = ids2sel(c(ns("variants"),ns("prefs"),ns("reduce"), ns("branchingLimit"), ns("spLimit"))) 
 	
 	ui = tagList(
 		h5(paste0("Equilibrium analysis of ", gameId)),
+		HTML("<table><tr><td valign='top'>"),
 		selectizeInput(ns("variants"),label="Variants",choices = xeq$variants,selected = xeq$variants, multiple=TRUE),
+		selectizeInput(ns("prefs"),label="Preferences",choices = names(xeq$prefs),selected = "payoff", multiple=TRUE),
+		HTML("</td><td valign='top'>"),
 		numericInput(ns("branchingLimit"),label="Branching limit",value = xeq$branching.limit),
-		helpText("Some game trees may be too large to handle. We stop generating the game tree if the number of branches in the current level has exceeded the branching limit."),
+		numericInput(ns("spLimit"),label="Strategy Profiles Limit",value = xeq$sp.limit),
+		selectInput(ns("reduce"),label="Reduce game by Eliminating some dominated moves",choices = list("No reduction"="noreduce", "Reduce"="reduce","Both"="both")),
+		HTML("</td></tr></table>"),
 		smallButton(ns("makeTgBtn"),"Generate Game Trees", "data-form-selector"=form.sel),
 		smallButton(ns("solveSPEBtn"),"Solve Pure SPE", "data-form-selector"=form.sel),
     uiOutput(ns("tgmsg")),
@@ -53,101 +61,14 @@ xs.eq.ui = function(gameId, xs = app$xs, app=getApp()) {
 		uiOutput(ns("eqsUI"))
 		
 	)
+		
 	buttonHandler(ns("makeTgBtn"),function(formValues,...) {
-		variants = unlist(formValues[[ns("variants")]])
-		branching.limit = formValues[[ns("branchingLimit")]]
-		restore.point("makeTgBtnClick")
-		xeq$sel.variants = variants
-		
-		timedMessage(ns("tgmsg"),msg=paste0("Generate game trees for variants ",paste0(variants,collapse=", ")))
-		
-		msg.fun = function(...) {
-			msg = paste0(...)
-			timedMessage(ns("tgmsg"),msg=msg,millis = Inf)
-		}
-		for (variant in xeq$sel.variants) {
-			msg = paste0("Generate or load game tree for variant ",variant,"... ")
-			timedMessage(ns("tgmsg"),msg=msg)
-			tg = get.tg(gameId=gameId, variant=variant, rg=xeq$rg, msg.fun=msg.fun, never.load=xs$never.load.tg)
-			xeq$tg.li[[variant]] = tg
-			
-			rtg = reduce.tg(tg)
-			xeq$tg.li[[paste0(variant,".reduced")]] = rtg
-			
-		}
-		rvariants = c(variants,paste0(variants,".reduced"))
-
-		timedMessage(ns("tgmsg"),msg=paste0("Game trees generated..."))
-		info.df = xeq.tg.info.df(xeq=xeq, variants=rvariants)
-		html = html.table(info.df)
-		setUI(ns("tginfo"),HTML(html))
-		dsetUI(ns("tginfo"),HTML(html))
 	})
 	
 	buttonHandler(ns("solveSPEBtn"),function(formValues,...) {
-		variants = unlist(formValues[[ns("variants")]])
-		restore.point("solveSPEClick")
-		xeq$sel.variants = variants
-		xeq$eqo.li = xeq$eq.li = list()
-
-		timedMessage(ns("tgmsg"),msg=paste0("Solve SPE for variants ",paste0(variants,collapse=", ")))
-		
-		msg.fun = function(...) {
-			msg = paste0(...)
-			timedMessage(ns("tgmsg"),msg=msg,millis = Inf)
-		}
-		for (variant in xeq$sel.variants) {
-			msg = paste0("Create or load game tree for variant ",variant,"... ")
-			timedMessage(ns("tgmsg"),msg=msg)
-			tg = get.tg(gameId=gameId, variant=variant, rg=xeq$rg, msg.fun=msg.fun, never.load=TRUE)
-			xeq$tg.li[[variant]] = tg
-			
-
-			#msg = paste0("Create Gambit .efg file for ",variant,"... ")
-			#tg.to.efg(tg=tg)
-			msg = paste0("Solve all pure SPE for variant ",variant," with Gambit... ")
-			msg.fun(msg)
-			eq.li = get.eq(tg = tg)
-			xeq$eq.li[[variant]] = eq.li
-			
-			eqo = eq.outcomes(eq.li, tg=tg)
-			eqo$variant = variant
-			eqo = select(eqo, variant, everything())
-			
-			xeq$eqo.li[[variant]] = eqo
-
-			msg = paste0("Reduce game and compute SPE for variant ",variant," with Gambit... ")
-			msg.fun(msg)
-			
-			rtg = reduce.tg(tg)
-			rvariant = rtg$variant
-			xeq$tg.li[[rvariant]] = rtg
-			
-			eq.li = get.eq(tg = rtg)
-			xeq$eq.li[[rvariant]] = eq.li
-			
-			eqo = eq.outcomes(eq.li, tg=rtg)
-			eqo$variant = rvariant
-			eqo = select(eqo, variant, everything())
-			
-			xeq$eqo.li[[rvariant]] = eqo
-			
-		}
-		timedMessage(ns("tgmsg"),msg=paste0("SPE have been generated..."))
-		
-		rvariants = names(xeq$eqo.li)
-		
-		info.df = xeq.tg.info.df(xeq=xeq, variants = rvariants)
-		html = html.table(info.df)
-		setUI(ns("tginfo"),HTML(html))
-		dsetUI(ns("tginfo"),HTML(html))
-		
-		eqo.df = bind_rows(xeq$eqo.li)
-		html = html.table(eqo.df)
-		ui = tagList(h5("Pure SPE outcomes:"), HTML(html))
-		setUI(ns("eqsUI"),ui)
-		dsetUI(ns("eqsUI"),ui)
-		
+		xeq.solve.spe(xeq=xeq, formValues=formValues, clear=TRUE, never.load = xs$never.load.tg)
+		xeq.show.tg.info(xeq)
+		xeq.show.eqo(xeq)
 	})
 	
 
@@ -155,44 +76,136 @@ xs.eq.ui = function(gameId, xs = app$xs, app=getApp()) {
 	ui
 }
 
-xeq.tg.info.df = function(xeq, variants = xeq$sel.variants) {
+xeq.solve.spe = function(xeq, formValues,clear=TRUE, just.make.tg=FALSE, never.load=TRUE) {
+	restore.point("xeq.solve.spe")
+	ns = xeq$ns
+
+	if (clear) {
+		xeq$tg.li = xeq$eq.li = xeq$eqo.li = list()
+	}
+	
+	variants = unlist(formValues[[ns("variants")]])
+	pref_names = unlist(formValues[[ns("prefs")]])
+	reduce.method = unlist(formValues[[ns("reduce")]])
+	branching.limit = unlist(formValues[[ns("branchingLimit")]])
+	sp.limit = unlist(formValues[[ns("spLimit")]])
+		
+	if (reduce.method=="reduce") {
+		reduce.vec = TRUE
+	} else if (reduce.method=="noreduce") {
+		reduce.vec = FALSE 
+	} else {
+		reduce.vec = c(FALSE,TRUE)
+	}
+	
+	xeq$sel.variants = variants
+	xeq$sel.prefs = xeq$prefs[pref_names]
+	xeq$eqo.li = xeq$eq.li = list()
+
+	timedMessage(ns("tgmsg"),msg=paste0("Solve SPE for variants ",paste0(variants,collapse=", ")))
+	
+	msg.fun = function(...) {
+		msg = paste0(...)
+		timedMessage(ns("tgmsg"),msg=msg,millis = Inf)
+	}
+	for (variant in xeq$sel.variants) {
+		msg = paste0("Create or load game tree for variant ",variant,"... ")
+		timedMessage(ns("tgmsg"),msg=msg)
+		tg = get.tg(gameId=gameId, variant=variant, rg=xeq$rg, msg.fun=msg.fun, never.load=never.load)
+		
+		for (pref in xeq$sel.prefs) {
+			tg = as.environment(as.list(tg))
+			set.tg.pref(pref,tg)
+			for (reduce in reduce.vec) {
+				if (reduce) {
+					msg = paste0("Solve all pure SPE for reduced variant ",variant," for pref ", pref$name,"... ")
+					timedMessage(ns("tgmsg"),msg=msg)
+					tg = reduce.tg(tg)
+				} else {
+					msg = paste0("Solve all pure SPE for variant ",variant," for pref ", pref$name,"... ")
+					timedMessage(ns("tgmsg"),msg=msg)
+				}
+				id = tg$tg.id
+				id = str.right.of(id,paste0(tg$gameId,"_"))
+				xeq$tg.li[[id]] = tg
+				
+				if (!just.make.tg) {
+					eq.li = get.eq(tg = tg)
+					xeq$eq.li[[id]] = eq.li
+					eqo = eq.outcomes(eq.li, tg=tg)
+					eqo$id = id
+					eqo = select(eqo, id, everything())
+					xeq$eqo.li[[id]] = eqo
+					
+				}
+			}
+		}
+	}
+	timedMessage(ns("tgmsg"),msg=paste0("All SPE have been generated..."))
+
+}
+
+xeq.show.tg.info = function(xeq) {
+	ns = xeq$ns
+	restore.point("xeq.show.tg.info")
+	
+	info.df = xeq.tg.info.df(xeq=xeq)
+	html = html.table(info.df)
+	setUI(ns("tginfo"),HTML(html))
+	dsetUI(ns("tginfo"),HTML(html))
+}
+
+xeq.show.eqo = function(xeq) {
+	ns = xeq$ns
+	restore.point("xeq.show.eqo")
+	
+	eqo.df = bind_rows(xeq$eqo.li)
+	html = html.table(eqo.df)
+	ui = tagList(h5("Pure SPE outcomes:"), HTML(html))
+	setUI(ns("eqsUI"),ui)
+	dsetUI(ns("eqsUI"),ui)
+}
+
+xeq.tg.info.df = function(xeq,ids = names(xeq$tg.li),...) {
 	restore.point("xeq.tg.info.df")
 	
 	tg = xeq$tg.li[[1]]
-	no.oco = lapply(variants, function(variant) {
-		tg = xeq$tg.li[[variant]]
+	
+	
+	no.oco = lapply(ids, function(id) {
+		tg = xeq$tg.li[[id]]
 		if (is.null(tg)) return("-")
 		as.character(NROW(tg$oco.df))
 	})
-	no.ise = lapply(variants, function(variant) {
-		tg = xeq$tg.li[[variant]]
+	no.ise = lapply(ids, function(id) {
+		tg = xeq$tg.li[[id]]
 		if (is.null(tg)) return("?")
 		as.character(NROW(tg$ise.df))
 	})
-	no.sg = lapply(variants, function(variant) {
-		tg = xeq$tg.li[[variant]]
+	no.sg = lapply(ids, function(id) {
+		tg = xeq$tg.li[[id]]
 		if (is.null(tg$sg.df)) return("?")
 		as.character(NROW(tg$sg.df))
 	})
-	no.all.sp = lapply(variants, function(variant) {
-		tg = xeq$tg.li[[variant]]
+	no.all.sp = lapply(ids, function(id) {
+		tg = xeq$tg.li[[id]]
 		if (is.null(tg$sg.df)) return("?")
 		as.character(tg$sg.df$.num.strats[1])
 	})
-	no.sp = lapply(variants, function(variant) {
-		tg = xeq$tg.li[[variant]]
+	no.sp = lapply(ids, function(id) {
+		tg = xeq$tg.li[[id]]
 		if (is.null(tg$sg.df)) return("?")
 		as.character(sum(tg$sg.df$.num.strats.without.desc))
 	})
 
-	no.eq = lapply(variants, function(variant) {
-		eq.li = xeq$eq.li[[variant]]
+	no.eq = lapply(ids, function(id) {
+		eq.li = xeq$eq.li[[id]]
 		if (is.null(eq.li)) return("?")
 		as.character(length(eq.li))
 	})
 	
-	no.eqo = lapply(variants, function(variant) {
-		eqo.df = xeq$eqo.li[[variant]]
+	no.eqo = lapply(ids, function(id) {
+		eqo.df = xeq$eqo.li[[id]]
 		if (is.null(eqo.df)) return("?")
 		as.character(NROW(eqo.df))
 	})
@@ -201,12 +214,12 @@ xeq.tg.info.df = function(xeq, variants = xeq$sel.variants) {
 		"Outcomes",no.oco,
 		"Info sets", no.ise,
 		"Subgames", no.sg,
-		"Strat-profiles...",rep("",length(variants)),
+		"Strat-profiles...",rep("",length(ids)),
 		"...normal-form",no.all.sp,
 		"...backward-induction", no.sp,
 		"Pure SPE", no.eq,
 		"Pure SPE outcomes", no.eqo
 	))
-	colnames(mat) = c("Variant",variants)
+	colnames(mat) = c("",ids)
 	as.data.frame(mat)
 }

@@ -31,11 +31,14 @@ get.util.funs.name = function(util.funs) {
 	restore.point("get.util.funs.name")
 	if (is.null(util.funs)) return(NULL)
 	
-	names = sapply(util.funs, function(util.fun) {
-		if (!is.null(names(util.fun))) return(names(util.fun))
-		if (is.character(util.fun)) return(util.fun)
-		deparse1(util.fun)	
-	})
+	names = names(util.funs)
+	if (is.null(names)) {
+		names = sapply(util.funs, function(util.fun) {
+			if (is.character(util.fun)) return(util.fun)
+			deparse1(util.fun)	
+		})
+	}
+	
 	if (length(unique(names))==1) return(unique(names))
 	if (all(str.starts.with(names,"payoff_"))) return("payoff")
 	return(paste0(names, collapse="_"))

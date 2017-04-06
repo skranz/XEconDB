@@ -1,0 +1,58 @@
+# preference classes
+payoff:
+	descr: 'Risk-neutral payoff maximizer.'
+	defaultName: payoff 
+	params:
+	fun: payoffUtil
+
+envy:
+	descr: 'Fehr-Schmidt inequality aversion with envy only (no guilt).' 
+	defaultName: 'envy1'
+	params:
+		alpha:
+			descr: 'the degree of envy'
+			default: 1
+	fun: envyUtil
+
+ineqAv:
+	descr: 'Fehr-Schmidt inequality aversion.' 
+	defaultName: 'ineq15'
+	params:
+		alpha:
+			descr: 'the degree of envy'
+			default: 1
+		beta:
+			descr: 'the degree of guilt'
+			default: 0.5
+	fun: ineqAvUtil
+
+lossAv:
+	descr: 'Loss aversion with a single reference point.'
+	defaultName: 'lossAvCenter'
+	params:
+		r:
+			descr: 'Reference point. Can be a formula'
+			default: '(min(payoff_i)+max(payoff_i))/2'
+		lambda:
+			descr: degree of loss aversion
+			default: 2
+	fun: lossAvUtil
+
+unifLossAv:
+	descr: > 
+		Loss aversion with a continuum of reference points 
+		that are uniformely distributed between rmin and rmax.
+		Between rmin and rmax, the resulting utility function has 
+		a quadratic form, while beyond rmin or rmax it is linear.
+	defaultName: 'unifLossAv_min_max'
+	params:
+		rmin:
+			descr: the lowest reference point
+			default: 'min(payoff_i)'
+		rmax:
+			descr: the highest reference point
+			default: 'max(payoff_i)'	
+		lambda:
+			descr: degree of loss aversion
+			default: 2
+	fun: unifLossAvUtil

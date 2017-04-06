@@ -7,6 +7,7 @@ examples.reduce.tg = function() {
   setwd("D:/libraries/XEconDB/projects/UltimatumGame/")
 	gameId = "BunchedUltimatum"
 	gameId = "Cournot"
+	gameId = "Centipede"
 	tg = get.tg(gameId = gameId)
   rtg = reduce.tg(tg)
 
@@ -18,7 +19,7 @@ examples.reduce.tg = function() {
   roco.df = rtg$oco.df
   
   tg$ise.df
-  rtg$ise.df
+  rtg$ise.dfstage.df
   
   stage.df = rtg$stage.df
   
@@ -113,14 +114,35 @@ reduce.tg = function(tg) {
     rtg$lev.li[[lev.num]] = lev
   }
   
-  num.levs = length(rtg$lev.li)
-  lev.df = rtg$lev.li[[num.levs]]$lev.df
-  key.col = paste0(".row.", num.levs)
-  rows = match(lev.df[[key.col]], tg$stage.df[[key.col]])
-  stage.df = tg$stage.df[rows,,drop=FALSE]
-  cols = intersect(colnames(stage.df), colnames(lev.df))
-	stage.df[,cols] = lev.df[,cols,drop=FALSE]
+  # create reduced stage.df
+  stage.df = tg$stage.df
+ 
+  lev.num = 0
+  lev.num = lev.num+1
+  for (lev.num in seq_along(rtg$lev.li)) {
+	  lev.df = rtg$lev.li[[lev.num]]$lev.df
+		key.col = paste0(".row.", lev.num)
+  	mrows = match(stage.df[[key.col]],lev.df[[key.col]])
+  	stage.rows = which(!is.na(mrows))
+  	lev.rows = mrows[stage.rows]
+  	if (length(stage.rows)>0) {
+  		cols = intersect(colnames(stage.df), colnames(lev.df))
+  		stage.df[stage.rows,cols] = lev.df[lev.rows,cols,drop=FALSE]
+		}
+
+		all.stage.rows = sort(unique(c(
+  		stage.rows,
+  		which(is.na(stage.df[[key.col]]))
+  	)))
+  	stage.df = stage.df[all.stage.rows,,drop=FALSE]
+  }
+   
   rtg$stage.df = stage.df
+  
+  #l1 = rtg$lev.li[[1]]$lev.df
+  #l2 = rtg$lev.li[[2]]$lev.df
+  #l3 = rtg$lev.li[[3]]$lev.df
+
   
   # adapt .row.1 .row.2. etc in all lev.df
   row.inds = lapply(seq_along(rtg$lev.li), function(lev.num) {
@@ -148,7 +170,7 @@ reduce.tg = function(tg) {
   make.tg.iso.df(rtg)
   
   # set payoff utility as standard
-  set.tg.util(tg=rtg)
+  set.tg.util(tg=rtg,util.funs = rtg$util.funs)
   compute.tg.subgames(rtg)
 	make.tg.spi.li(rtg)
 
@@ -267,6 +289,8 @@ reduce.action.level = function(lev,rtg,tg, iteration=1) {
   
   lev.df = remove.cols(lev$lev.df,".dominated")
   restore.point("reduce.action.level")
+  if (NROW(lev.df)==1) return()
+  
   # 1. join with oco.df (or with last lev.df)
   join.vars = unique(sapply(tg$lev.li[1:lev$lev.num], function(lev) lev$var))
   
@@ -275,6 +299,7 @@ reduce.action.level = function(lev,rtg,tg, iteration=1) {
   if (iteration > 1) {
     lev.df = semi_join(lev.df,rtg$oco.df, by=join.vars)
   }
+  if (NROW(lev.df)==0) return()
   
   cols = c(join.vars, ".info.set.ind", ".info.set.move.ind",".player")
   
