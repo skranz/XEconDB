@@ -542,8 +542,10 @@ initGameTreeMenus: function() {
         "addBefore": {name: "Add Stage Before", icon: "edit"},
         "add": {name: "Add Stage After", icon: "edit"},
         "duplicate": {name: "Duplicate Stage", icon: "copy"},
+        /*
         "copy": {name: "Copy Stage", icon: "copy"},
         "paste": {name: "Paste Stage Below", icon: "paste"},
+        */
         "delete": {name: "Delete Stage", icon: "delete"},
         "sep1": "---",
         "template": {
@@ -561,8 +563,10 @@ initGameTreeMenus: function() {
       items: {
         "parse": {name: "Parse Actions"},
         "add": {name: "Add Action", icon: "edit"},
+        /*
         "copy": {name: "Copy All Actions", icon: "copy"},
         "paste": {name: "Paste", icon: "paste"},
+        */
       }
     });
 
@@ -575,8 +579,10 @@ initGameTreeMenus: function() {
         "parse": {name: "Parse Action"},
         "add": {name: "Add Action", icon: "edit"},
         "duplicate": {name: "Duplicate", icon: "copy"},
+        /*
         "copy": {name: "Copy", icon: "copy"},
         "paste": {name: "Paste", icon: "paste"},
+        */
         "delete": {name: "Delete", icon: "delete"},
         "sep1": "---",
         "template": {
@@ -595,8 +601,10 @@ initGameTreeMenus: function() {
       },
       items: {
         "add": {name: "Add Move of Nature", icon: "edit"},
+        /*
         "copy": {name: "Copy All Moves of Natures", icon: "copy"},
         "paste": {name: "Paste", icon: "paste"},
+        */
       }
     });
 
@@ -608,8 +616,10 @@ initGameTreeMenus: function() {
       items: {
         "add": {name: "Add Move of Nature", icon: "edit"},
         "duplicate": {name: "Duplicate", icon: "copy"},
+        /*
         "copy": {name: "Copy", icon: "copy"},
         "paste": {name: "Paste", icon: "paste"},
+        */
         "delete": {name: "Delete", icon: "delete"},
         "sep1": "---",
         "template": {
@@ -627,8 +637,10 @@ initGameTreeMenus: function() {
       },
       items: {
         "add": {name: "Add Computation", icon: "edit"},
+        /*
         "copy": {name: "Copy All Computations", icon: "copy"},
         "paste": {name: "Paste", icon: "paste"},
+        */
         "sep1": "---",
         "addPayoffs": {name: "Add Payoffs", icon: "edit"}
       }
@@ -643,8 +655,10 @@ initGameTreeMenus: function() {
       items: {
         "add": {name: "Add Computation", icon: "edit"},
         "duplicate": {name: "Duplicate", icon: "copy"},
+        /*
         "copy": {name: "Copy", icon: "copy"},
         "paste": {name: "Paste", icon: "paste"},
+        */
         "delete": {name: "Delete", icon: "delete"},
         "sep1": "---",
         "addPayoffs": {name: "Add Payoffs", icon: "edit"}

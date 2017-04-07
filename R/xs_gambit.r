@@ -181,9 +181,9 @@ gambit.solve.eq = function(tg, mixed=FALSE, just.spe=TRUE, efg.file=tg.efg.file.
 get.eq.id = function(tg.id=tg$tg.id, just.spe=TRUE, mixed=FALSE, tg=NULL) {
  	eq.id = paste0(tg$tg.id)
  	if (just.spe)
- 		eq.id = paste0(eq.id,"spe")
+ 		eq.id = paste0(eq.id,"_spe")
  	if (mixed)
- 		eq.id = paste0(eq.id,"mixed")
+ 		eq.id = paste0(eq.id,"_mixed")
  	eq.id
 
 }

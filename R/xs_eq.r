@@ -111,10 +111,10 @@ xeq.solve.spe = function(xeq, formValues,clear=TRUE, just.make.tg=FALSE, never.l
 	for (variant in xeq$sel.variants) {
 		msg = paste0("Create or load game tree for variant ",variant,"... ")
 		timedMessage(ns("tgmsg"),msg=msg)
-		tg = get.tg(gameId=xeq$gameId, variant=variant, rg=xeq$rg, msg.fun=msg.fun, never.load=never.load)
+		org.tg = get.tg(gameId=xeq$gameId, variant=variant, rg=xeq$rg, msg.fun=msg.fun, never.load=never.load)
 		
 		for (pref in xeq$sel.prefs) {
-			tg = as.environment(as.list(tg))
+			tg = as.environment(as.list(org.tg))
 			set.tg.pref(pref,tg)
 			for (reduce in reduce.vec) {
 				if (reduce) {
@@ -220,6 +220,6 @@ xeq.tg.info.df = function(xeq,ids = names(xeq$tg.li),...) {
 		"Pure SPE", no.eq,
 		"Pure SPE outcomes", no.eqo
 	))
-	colnames(mat) = c("",ids)
+	colnames(mat) = c(".",ids)
 	as.data.frame(mat)
 }
