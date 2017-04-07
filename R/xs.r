@@ -291,7 +291,8 @@ xs.game.ui = function(gameId, xs = app$xs, app=getApp()) {
   restore.point("xs.game.edit.ui")
   ns = NS(gameId)
   
-	jg = try(get.jg(gameId))   
+	jg = try(get.jg(gameId))
+	cat("\n",jg$stages[[1]]$name)
   if (is(jg,"try-error")) {
     ui = tagList(h4("Error when parsing json file:"), p(as.character(jg)))
     return(ui)

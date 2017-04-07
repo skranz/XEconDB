@@ -111,7 +111,7 @@ xeq.solve.spe = function(xeq, formValues,clear=TRUE, just.make.tg=FALSE, never.l
 	for (variant in xeq$sel.variants) {
 		msg = paste0("Create or load game tree for variant ",variant,"... ")
 		timedMessage(ns("tgmsg"),msg=msg)
-		tg = get.tg(gameId=gameId, variant=variant, rg=xeq$rg, msg.fun=msg.fun, never.load=never.load)
+		tg = get.tg(gameId=xeq$gameId, variant=variant, rg=xeq$rg, msg.fun=msg.fun, never.load=never.load)
 		
 		for (pref in xeq$sel.prefs) {
 			tg = as.environment(as.list(tg))

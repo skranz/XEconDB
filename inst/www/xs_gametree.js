@@ -14,9 +14,18 @@ init: function(struc) {
 initGame: function(gameId, content) {
   var treeId =  "xsGameTree_"+gameId;
   var varparId =  "xsVarPar_"+gameId;
-  var game = {gameId: gameId, treeId: treeId, varparId:varparId, content: content};  
+  var game = {gameId: gameId, treeId: treeId, varparId:varparId, content: content};
+  
+  var wasLoaded = xecon.games.hasOwnProperty(gameId);
+  
   xecon.games[gameId] = game;
-  xecon.initGameTree(game);
+  
+  if (!wasLoaded) {
+  	xecon.initGameTree(game);
+  } else {
+  	//alert("Reload game " + gameId);
+  	xecon.reloadGameTree(game);
+  }
   //$(function(){xecon.initGameVarPar(game)});
 },
 
@@ -44,7 +53,7 @@ initGameVarPar: function(game) {
     manualRowMove: true,    
     */
     cell: [
-      {row: 1, col: 1, readOnly: true}
+      {row: 0, col: 0, readOnly: true}
     ]
   };
   
@@ -211,15 +220,23 @@ pasteNode: function(node,xs) {
 },
 
 duplicateNode: function(node,xs) {
+	var pn = node.getParent();
 	nodeType = xs.nodeType;
 	nodeData = node.toDict(true);
+
+	var content = xecon.parseNodeContent(node,1);
+	//parseNode: function(level, parentKey, type, content, field, info)
+  var nn = xecon.parseNode(1,xs.parentKey,xs.nodeType,content,xs.field, xs.info);
+  nn.expanded = true;
+  node.addNode(nn,"after");
+	return;
 	
+	// old code does not work
 	// adapt inputId and keys
 	xecon.duplCounter = xecon.duplCounter+1; 
 	oldid = nodeData.key;
 	newid = oldid+"_dup"+xecon.duplCounter;
 	nodeData = xecon.changeNodeDataInputId(nodeData, oldid,newid);
-	
 	node.addNode(nodeData,"after");
 },
 
@@ -372,6 +389,21 @@ initGameTree: function(game) {
 
 },
 
+reloadGameTree: function(game) {
+  var struc = xecon.struc;
+  var id = game.treeId;
+  var content = game.content;
+
+  var nodes = xecon.parseNodeFields(1,"game","game",content.game,{gameId: game.gameId});
+	//debugger;
+	var tree = $("#"+id).fancytree("getTree");  
+  tree.reload(nodes);
+
+  //initGameTreeMenus();
+
+},
+
+
 getAtomNodeInputType: function(st, field, type) {
   if (typeof st !== 'undefined') {
     if (typeof st.inputType !== 'undefined') {
@@ -435,7 +467,7 @@ parseNode: function(level, parentKey, type, content, field, info) {
   if (isAtom) {
     inputType = xecon.getAtomNodeInputType(st, field, type);
     var choices = with_default(field.set, null);
-    var xs = {title: title, fieldName: field.name, isList: false, isAtom: true, nodeType: type, inputType: inputType, inputId: inputId, choices: choices, value: content, parentKey: key, info: info};
+    var xs = {title: title, fieldName: field.name, isList: false, isAtom: true, nodeType: type, inputType: inputType, inputId: inputId, choices: choices, value: content, parentKey: key, info: info, field: field};
     var node = {key: key, title: title, folder: false, extraClasses: "gameNodeType_"+type, children: null, xs: xs};
     return(node);
   }
@@ -452,14 +484,14 @@ parseNode: function(level, parentKey, type, content, field, info) {
         children.push(child);
       }
     }
-    var xs = {title: title, fieldName: field.name, isList: true, isAtom: false, nodeType: type, inputType: "none", inputId: inputId, parentKey: key, value: null, childType: childType, info: info};
+    var xs = {title: title, fieldName: field.name, isList: true, isAtom: false, nodeType: type, inputType: "none", inputId: inputId, parentKey: key, value: null, childType: childType, info: info, field: field};
     var node = {key: key, title: title, folder: true, expanded: expanded, extraClasses: "gameNodeType_"+type, children: children, xs: xs};
     return(node);
   }
   
   // Node with fields
   var children = xecon.parseNodeFields(level+1,key,type, content, info);
-  var xs = {title: title, fieldName: field.name,isList: false,isAtom: false, nodeType: type, inputType: "none", inputId: inputId, parentKey: key, value: null,info: info};
+  var xs = {title: title, fieldName: field.name,isList: false,isAtom: false, nodeType: type, inputType: "none", inputId: inputId, parentKey: key, value: null,info: info, field: field};
   var node = {key: key, title: title, folder: true, extraClasses: "gameNodeType_"+type, children: children, expanded: expanded, xs: xs};
   return(node);
 },
