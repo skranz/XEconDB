@@ -133,8 +133,8 @@ xeq.solve.spe = function(xeq, formValues,clear=TRUE, just.make.tg=FALSE, never.l
 					eq.li = get.eq(tg = tg)
 					xeq$eq.li[[id]] = eq.li
 					eqo = eq.outcomes(eq.li, tg=tg)
-					eqo$id = id
-					eqo = select(eqo, id, everything())
+					eqo$.id = id
+					eqo = select(eqo, .id, everything())
 					xeq$eqo.li[[id]] = eqo
 					
 				}
@@ -161,7 +161,20 @@ xeq.show.eqo = function(xeq) {
 	
 	eqo.df = bind_rows(xeq$eqo.li)
 	html = html.table(eqo.df)
-	ui = tagList(h5("Pure SPE outcomes:"), HTML(html))
+	
+	compute.expected = TRUE
+	if (compute.expected) {
+		eeqo.df = expected.eq.outcomes(eqo.df,group.vars = c(".id","eqo.ind"))
+		html2 = html.table(eeqo.df)
+	}
+	ui = tagList(
+		h5("Pure SPE outcomes:"), HTML(html),
+		if (compute.expected) {
+			tagList(
+				h5("Expected Pure SPE outcomes:"), HTML(html2)
+			)
+		}
+	)
 	setUI(ns("eqsUI"),ui)
 	dsetUI(ns("eqsUI"),ui)
 }
