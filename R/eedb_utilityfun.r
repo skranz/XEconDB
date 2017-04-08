@@ -109,20 +109,21 @@ unifLossAvUtil = function(player=1,rmin=0,rmax=1,lambda=2,n=NULL) {
   	lab = paste0("unifLossAv_start",start,"_end",end,"_lambda",lambda)
   }
   names(util)=rep(lab,length(player))
-  util = replace.payoff_i.in.util(util)
+  util = replace.payoff_i.in.util(util, players=player)
   util
 }
 
 # Loss aversion utility with a continuous multiple reference point that 
 # is uniformely distributed between start and end. Normalized such that material payoffs of 0 remain 0
 lossAvUtil = function(player=1,r,lambda=2,n=NULL) {
+	restore.point("lossAvUtil")
   r.str = paste0("c(",paste0(r, collapse=","),")")
   x = paste0("payoff_",player)
   util = paste0("loss.aversion.util(",x,",r=",r.str,",lambda=",lambda,")")
   
   lab = paste0("lossAv_r",r,"_lambda",lambda)
   names(util)=rep(lab,length(player))
-  util = replace.payoff_i.in.util(util)
+  util = replace.payoff_i.in.util(util, players=player)
   util
 }
 
@@ -159,9 +160,10 @@ loss.aversion.util.fun = function(x,r,lambda=2,n=2) {
   
 }
 
-replace.payoff_i.in.util = function(utils.str) {
+replace.payoff_i.in.util = function(utils.str, players=seq_len(utils.str)) {
 	for (i in seq_along(utils.str)) {
-		utils.str = gsub("payoff_i",paste0("payoff_",i), utils.str,fixed=TRUE)
+		player = players[i]
+		utils.str = gsub("payoff_i",paste0("payoff_",player), utils.str,fixed=TRUE)
 	}
 	utils.str
 }

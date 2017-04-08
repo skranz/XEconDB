@@ -172,13 +172,15 @@ action.level.to.gambit.txt = function(lev, oco.df) {
 # p "" 2 1 "(2,1)" { "h" "l" } 0   
   txt = paste0('p "',
 #     a text string, giving the name of the node
-    df$.node,'" ',
+#    df$.node,'" ',
+    "",'" ',
 #     a positive integer specifying the player who owns the node
     df$.player,' ',
 #     a positive integer specifying the information set
     df$.info.set.ind,' ',
 #     (optional) the name of the information set
-    '"',df$.info.set,'" ',
+#    '"',df$.info.set,'" ',
+    '"" ',
 #     (optional) a list of action names for the information set
     '{ ', df$moves_str," }",
 #     a nonnegative integer specifying the outcome
@@ -196,15 +198,17 @@ nature.level.to.gambit.txt = function(lev, oco.df, info.set.start = 1) {
  
 # c "" 2 "(0,2)" { "2g" 0.500000 "2b" 0.500000 } 0
   
-  com = paste0('paste0("\\"',lev$var,'_",',lev$var,',"\\" ",.prob, collapse=" ")')
+  com = paste0('paste0("\\"',lev$var,'_",',lev$var,',"\\" ",.move.prob, collapse=" ")')
   df = summarise_(group_by(df,.node.ind,.node),moves_str = com) %>% ungroup
   txt = paste0('c "',
 #     a text string, giving the name of the node
-    df$.node,'" ',
+#    df$.node,'" ',
+    "",'" ',
 #     a positive integer specifying the information set number
     1:NROW(df)+info.set.start-1,' ',
 #     (optional) the name of the information set
-    '"',df$.node,'" ',
+#    '"',df$.node,'" ',
+    '"" ',
 #     (optional) a list of actions at the information set with their corresponding probabilities
     '{ ', df$moves_str," }",
 #     a nonnegative integer specifying the outcome

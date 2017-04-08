@@ -154,6 +154,8 @@ xs.ui = function(app=getApp(), xs=app$xs) {
   library(dplyr)
   tabs = w2tabs(id="xsTabs",tabs=list())
 
+  
+  
   panes = jqueryLayoutPanes(id="xsPanes",json.opts=json.opts,
   	north = div(menubar,thinHR()),
     west = tagList(
@@ -186,7 +188,17 @@ xs.ui = function(app=getApp(), xs=app$xs) {
   
   
   
-  eventHandler("close","xsTabs", function(...,tabId, xs=app$xs) {
+  eventHandler("close","xsTabs", function(...,tabId, divId, xs=app$xs) {
+  	restore.point("xsTabs close")
+  	cat("xsTabs.close: ", tabId)
+  	
+  	# destroy content of equilibrium tabs
+  	# in order to work correctly when
+  	# closed and opened again
+  	#if (str.starts.with(tabId,"tab_eq_")) {
+  	#	w2tabs.destroy.tab.content(divId)
+  	#}
+  	
     xs$tabs = setdiff(xs$tabs, tabId)
   })
   
@@ -279,8 +291,9 @@ xs.show.game.tab = function(gameId, xs=app$xs, app=getApp()) {
   xs$tabs = c(xs$tabs, tabId)
   
   divId = paste0("div_game_",gameId)
-  tab=list(id=tabId,caption=gameId, closable=TRUE,div_id = divId)
+  tab=list(id=tabId,caption=gameId, closable=TRUE,div_id = divId, keep_closed_content=TRUE)
   w2tabs.add(id="xsTabs", tabs=list(tab))
+  
   ui = xs.game.ui(gameId)
   appendToHTML(selector="#mainDiv", as.character(hidden_div(id=divId, ui)))
   w2tabs.select("xsTabs", tabId)
