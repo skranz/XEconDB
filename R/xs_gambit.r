@@ -42,12 +42,25 @@ example.gambit.solve.eq = function() {
   ggplot(eo, aes(x=maxOffer, y=util_1, fill=is.eqo)) + geom_bar(stat = "identity")
  
 
+  # solve mixed equilibria
+ 	gameId = "Pennies"
+	tg = get.tg(gameId = gameId,never.load = FALSE)
+	eq.li = gambit.solve.eq(tg, mixed=TRUE)
+	
+	eq.li = gambit.solve.eq(tg, mixed=TRUE, solver="gambit-enummixed -q -d 4")
+	
+
+	eqo = eq.outcomes(eq.li, tg=tg)  
+  eeqo = expected.eq.outcomes(eqo)
+	
 }
 
 #' compute expected equilibrium outcomes
 #' taking expectations over moves of nature
 expected.eq.outcomes = function(eqo.df, group.vars=c("eq.ind", "eqo.ind")) {
 	restore.point("expected.eq.outcomes")
+	
+	if (NROW(eqo.df)==0) return(eqo.df)
 	
 	vars = setdiff(colnames(eqo.df),group.vars)
 	group.vars = intersect(group.vars, colnames(eqo.df))
@@ -64,7 +77,16 @@ expected.eq.outcomes = function(eqo.df, group.vars=c("eq.ind", "eqo.ind")) {
 	fun = function(df) {
 		restore.point("fun")
 		vals = lapply(vars, function(var) {
-			#restore.point("jhsjkhfkdhfh")
+			if (is.character(df[[var]]) & var != "variant") {
+				restore.point("jhsjkhfkdhfh")
+				sdf = group_by_(df, "eqo.ind", var) %>%
+					s_summarise(paste0('
+						.sum.prob = sum(.prob),
+						.var.prob = paste0(first(',var,'),ifelse(.sum.prob < 1,paste0("(",round(.sum.prob,2),")"),""))'
+					))
+				return(paste0(unique(sdf[[".var.prob"]]), collapse=","))
+			}
+			
 			if (var == ".outcome" | is.character(df[[var]]))
 				return(paste0(unique(df[[var]]), collapse=","))
 			if (var == ".prob")
@@ -95,7 +117,7 @@ expected.eq.outcomes = function(eqo.df, group.vars=c("eq.ind", "eqo.ind")) {
 
 
 #' Finds one or all mixed strategy equilibria
-gambit.solve.eq = function(tg, mixed=FALSE, just.spe=TRUE, efg.file=tg.efg.file.name(tg), efg.dir=get.eq.dir(), gambit.dir="", solver=NULL, eq.dir = efg.dir, save.eq = TRUE) {
+gambit.solve.eq = function(tg, mixed=FALSE, just.spe=TRUE, efg.file=tg.efg.file.name(tg), efg.dir=get.eq.dir(), gambit.dir="", solver=NULL, eq.dir = efg.dir, save.eq = TRUE, solvemode=NULL) {
   
   restore.point("gambit.solve.eq")
   
@@ -162,7 +184,7 @@ gambit.solve.eq = function(tg, mixed=FALSE, just.spe=TRUE, efg.file=tg.efg.file.
   })
   
   if (save.eq) {
-  	eq.id = get.eq.id(tg=tg, just.spe = just.spe, mixed=mixed)
+  	eq.id = get.eq.id(tg=tg, just.spe = just.spe, mixed=mixed, solvemode=solvemode)
   	eq = list(
   		eq.id = eq.id,
   		tg.id = tg$tg.id,
@@ -178,8 +200,11 @@ gambit.solve.eq = function(tg, mixed=FALSE, just.spe=TRUE, efg.file=tg.efg.file.
   eq.li
 }
 
-get.eq.id = function(tg.id=tg$tg.id, just.spe=TRUE, mixed=FALSE, tg=NULL) {
+get.eq.id = function(tg.id=tg$tg.id, just.spe=TRUE, mixed=FALSE, tg=NULL, solvemode=NULL) {
  	eq.id = paste0(tg$tg.id)
+ 	if (!is.null(solvemode)) {
+ 		return(paste0(eq.id,"__",solvemode))
+ 	}
  	if (just.spe)
  		eq.id = paste0(eq.id,"_spe")
  	if (mixed)

@@ -39,9 +39,25 @@ xs.eq.ui = function(gameId, xs = app$xs, app=getApp()) {
 	
 	rg = xeq$rg
 	
+	xeq$solve.modes = list(
+		"All pure SPE"="spe",
+		"Just Gametree"="gametree",
+		"All pure NE"="ne",
+		"All NE (including mixed)"="ne_am",
+		"Some SPE (logit)"="spe_sm_logit",
+		"Some SPE (lcp)"="spe_sm_lcp",
+		"Some NE (ipa)"="ne_sm_ipa",
+#		"Some NE (liap)"="ne_sm_liap",
+		"Some NE (gnm)"="ne_sm_gnm",
+#		"Some NE (simpdiv)"="ne_sm_simpdiv",
+		"Some NE (lcp)"="ne_sm_lcp"
+#		"QRE (Quantal Response Eq.)"="qre"
+	)
+
+	
 	xeq$prefs = pref.classes.default.prefs()
 		
-	form.sel = ids2sel(c(ns("variants"),ns("prefs"),ns("reduce"), ns("branchingLimit"), ns("spLimit"))) 
+	form.sel = ids2sel(c(ns("variants"),ns("prefs"),ns("reduce"), ns("branchingLimit"), ns("spLimit"),ns("solvemode"))) 
 	
 	ui = tagList(
 		h5(paste0("Equilibrium analysis of ", gameId)),
@@ -52,9 +68,9 @@ xs.eq.ui = function(gameId, xs = app$xs, app=getApp()) {
 		numericInput(ns("branchingLimit"),label="Branching limit",value = xeq$branching.limit),
 		numericInput(ns("spLimit"),label="Strategy Profiles Limit",value = xeq$sp.limit),
 		selectInput(ns("reduce"),label="Reduce game by Eliminating some dominated moves",choices = list("No reduction"="noreduce", "Reduce"="reduce","Both"="both")),
+		selectInput(ns("solvemode"),label="Solve for",choices = xeq$solve.modes),
 		HTML("</td></tr></table>"),
-		smallButton(ns("makeTgBtn"),"Generate Game Trees", "data-form-selector"=form.sel),
-		smallButton(ns("solveSPEBtn"),"Solve Pure SPE", "data-form-selector"=form.sel),
+		smallButton(ns("solveBtn"),"Solve", "data-form-selector"=form.sel),
     uiOutput(ns("tgmsg")),
 		br(),
 		uiOutput(ns("tginfo")),
@@ -62,11 +78,8 @@ xs.eq.ui = function(gameId, xs = app$xs, app=getApp()) {
 		
 	)
 		
-	buttonHandler(ns("makeTgBtn"),function(formValues,...) {
-	})
-	
-	buttonHandler(ns("solveSPEBtn"),function(formValues,...) {
-		xeq.solve.spe(xeq=xeq, formValues=formValues, clear=TRUE, never.load = xs$never.load.tg)
+	buttonHandler(ns("solveBtn"),function(formValues,...) {
+		xeq.solve(xeq=xeq, formValues=formValues, clear=TRUE, never.load = xs$never.load.tg)
 		xeq.show.tg.info(xeq)
 		xeq.show.eqo(xeq)
 	})
@@ -76,8 +89,8 @@ xs.eq.ui = function(gameId, xs = app$xs, app=getApp()) {
 	ui
 }
 
-xeq.solve.spe = function(xeq, formValues,clear=TRUE, just.make.tg=FALSE, never.load=TRUE) {
-	restore.point("xeq.solve.spe")
+xeq.solve = function(xeq, formValues,clear=TRUE,  never.load=TRUE) {
+	restore.point("xeq.solve")
 	ns = xeq$ns
 
 	if (clear) {
@@ -89,6 +102,7 @@ xeq.solve.spe = function(xeq, formValues,clear=TRUE, just.make.tg=FALSE, never.l
 	reduce.method = unlist(formValues[[ns("reduce")]])
 	branching.limit = unlist(formValues[[ns("branchingLimit")]])
 	sp.limit = unlist(formValues[[ns("spLimit")]])
+	solvemode = unlist(formValues[[ns("solvemode")]])
 		
 	if (reduce.method=="reduce") {
 		reduce.vec = TRUE
@@ -113,6 +127,9 @@ xeq.solve.spe = function(xeq, formValues,clear=TRUE, just.make.tg=FALSE, never.l
 		timedMessage(ns("tgmsg"),msg=msg)
 		org.tg = get.tg(gameId=xeq$gameId, variant=variant, rg=xeq$rg, msg.fun=msg.fun, never.load=never.load)
 		
+		solver = xeq.solvemode.to.solver(solvemode, n=org.tg$params$numPlayers)
+		just.make.tg= (solvemode == "gametree")
+		
 		for (pref in xeq$sel.prefs) {
 			tg = as.environment(as.list(org.tg))
 			set.tg.pref(pref,tg)
@@ -130,18 +147,17 @@ xeq.solve.spe = function(xeq, formValues,clear=TRUE, just.make.tg=FALSE, never.l
 				xeq$tg.li[[id]] = tg
 				
 				if (!just.make.tg) {
-					eq.li = get.eq(tg = tg)
+					eq.li = get.eq(tg = tg,solver=solver, solvemode = solvemode)
 					xeq$eq.li[[id]] = eq.li
 					eqo = eq.outcomes(eq.li, tg=tg)
-					eqo$.id = id
+					eqo$.id = rep(id,NROW(eqo))
 					eqo = select(eqo, .id, everything())
 					xeq$eqo.li[[id]] = eqo
-					
 				}
 			}
 		}
 	}
-	timedMessage(ns("tgmsg"),msg=paste0("All SPE have been generated..."))
+	timedMessage(ns("tgmsg"),msg=paste0("Equilibria have been generated..."))
 
 }
 
@@ -168,12 +184,12 @@ xeq.show.eqo = function(xeq) {
 		html2 = html.table(eeqo.df)
 	}
 	ui = tagList(
-		h5("Pure SPE outcomes:"), HTML(html),
 		if (compute.expected) {
 			tagList(
-				h5("Expected Pure SPE outcomes:"), HTML(html2)
+				h5("Expected equilibrium outcomes:"), HTML(html2)
 			)
-		}
+		},
+		h5("Equilibrium outcomes:"), HTML(html)
 	)
 	setUI(ns("eqsUI"),ui)
 	dsetUI(ns("eqsUI"),ui)
@@ -235,4 +251,39 @@ xeq.tg.info.df = function(xeq,ids = names(xeq$tg.li),...) {
 	))
 	colnames(mat) = c(".",ids)
 	as.data.frame(mat)
+}
+
+xeq.solvemode.to.solver = function(solvemode, n=Inf) {
+	if (solvemode == "spe") {
+		solver = "gambit-enumpure -q -P"
+	} else if (solvemode == "ne") {
+		solver = "gambit-enumpure -q"
+	} else if (solvemode == "ne_am") {
+		if (n == 2) {
+			solver = "gambit-enummixed -q -d 4"
+		} else {
+			solver = "gambit-enumpoly -q"
+		}
+	} else if (solvemode == "qre") {
+		solver = "gambit-logit -q"
+	} else if (solvemode == "spe_sm_lcp") {
+		solver = "gambit-lcp -q -d 4 -P"
+	} else if (solvemode == "spe_sm_logit") {
+		solver = "gambit-logit -q -e"
+	} else if (solvemode == "ne_sm_simpdiv") {
+		solver = "gambit-simpdiv -q"
+	} else if (solvemode == "ne_sm_liap") {
+		solver = "gambit-liap -q -d 4"
+	} else if (solvemode == "ne_sm_lcp") {
+		solver = "gambit-lcp -q -d 4"
+	} else if (solvemode == "ne_sm_ipa") {
+		solver = "gambit-ipa -q -d 4"
+	} else if (solvemode == "ne_sm_gnm") {
+		solver = "gambit-gnm -q -d 4"
+	} else {
+		solver = ""
+	}
+	return(solver)
+	
+	
 }

@@ -143,13 +143,13 @@ save.tg = function(tg, games.dir = get.games.dir(project.dir), project.dir = get
 	saveRDS(tg, file)
 }
 
-get.eq = function(tg, util.funs=NULL, just.spe=TRUE, mixed=FALSE, eq.dir = get.eq.dir(project.dir), project.dir = get.project.dir(), save.new = TRUE,...) {
+get.eq = function(tg, util.funs=NULL, just.spe=TRUE, mixed=FALSE, eq.dir = get.eq.dir(project.dir), project.dir = get.project.dir(), save.new = TRUE, solvemode=NULL, solver=NULL,...) {
 	restore.point("get.eq")
 	if (!is.null(util.funs))
 		set.tg.util(tg=tg,util.funs)
 	
 	
-	eq.id = get.eq.id(tg=tg, just.spe=just.spe, mixed=mixed)
+	eq.id = get.eq.id(tg=tg, just.spe=just.spe, mixed=mixed, solvemode=solvemode)
 	file = file.path(eq.dir, paste0(eq.id,".eq"))
 	if (file.exists(file)) {
 		# return old vg if jg.hash has not changed
@@ -164,6 +164,6 @@ get.eq = function(tg, util.funs=NULL, just.spe=TRUE, mixed=FALSE, eq.dir = get.e
 
 
 	# solve equilibrium
-	eq.li = gambit.solve.eq(tg, just.spe=just.spe, mixed=mixed,eq.dir=eq.dir,save.eq = save.new,...)
+	eq.li = gambit.solve.eq(tg, just.spe=just.spe, mixed=mixed,eq.dir=eq.dir,save.eq = save.new,solver=solver,solvemode=solvemode,...)
 	eq.li
 }
