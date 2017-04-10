@@ -5,28 +5,11 @@
 
 examples.make.tg.spe = function() {
   setwd("D:/libraries/XEconDB/projects/UltimatumGame")
-	tg = get.tg(gameId="BunchedUltimatum", never.load=TRUE)
-	tg = get.tg(gameId="TwoChoices",never.load = TRUE)
-	tg = get.tg(gameId="LureOfAuthorityReduced")
-	set.tg.util(tg)
-	make.tg.iso.df(tg)
-	make.tg.ise.df(tg)
-	ise.df = tg$ise.df
-	iso.df = tg$iso.df
-	lev1 = tg$lev.li[[1]]$lev.df
-	#lev3 = tg$lev.li[[3]]$lev.df
 	
-	compute.tg.subgames(tg)
-	sg.df = tg$sg.df
-	sgi.df = tg$sgi.df
-	
-	make.tg.spi.li(tg)
-	spi = tg$spi.li[[2]]
-	spi = tg$spi.li[[1]]
-
+	gameId = "RiskyChoice"
+	gameId = "UltimatumGameSmall"
+	tg = get.tg(gameId=gameId, never.load=TRUE)
 	make.tg.spo.li(tg)
-	
-	make.sg.spo.df(.sg.ind = 1,tg=tg)
 	tg$spo.li
 	
 	solve.all.tg.spe(tg=tg)
@@ -34,6 +17,14 @@ examples.make.tg.spe = function() {
 	eqo.df = tg$spe.li[[1]]$eqo.df
 	
 	solve.sg.spe(.sg.ind = 1, tg=tg)
+	tg$spe.li
+	eq.li = tg$eq.li
+	
+	gambit.eq.li = gambit.solve.eq(tg)
+	eq.li
+	gambit.eq.li
+	
+	eq.li = tg.spe.li.to.eq.li(tg)
 }
 
 
@@ -178,7 +169,7 @@ moves.to.sp = function(moves,spi) {
 }
 
 # strategy profile index to matrix of moves at each information set
-sp.to.moves = function(sp, spi, wide=TRUE) {
+sp.to.moves = function(sp, spi=tg$spi, ise.df=NULL, wide=TRUE) {
   
 
   moves = matrix(0, NROW(sp), NROW(spi))
@@ -197,12 +188,13 @@ sp.to.moves = function(sp, spi, wide=TRUE) {
     return(moves)
   }
   
-  moves.df = data.frame(
+  moves.df = data_frame(
     sp = rep(sp,times=NCOL(moves)),
-    .info.set = rep(spi$.info.set, each = length(sp)),
-    .move.ind = as.vector(moves)
+  	.info.set.ind = rep(spi$.info.set.ind, each = length(sp)),
+    .move.ind = as.vector(moves),
+  	.info.set.move.ind = .move.ind - 1 + ise.df$.info.set.move.ind.start[.info.set.ind]
   )
-  as_data_frame(moves.df)
+  moves.df
 
 }
 
@@ -246,6 +238,7 @@ solve.all.tg.spe = function(tg) {
 	for (.sg.ind in .sg.inds) {
 		tg$spe.li[[.sg.ind]] = solve.sg.spe(.sg.ind = .sg.ind, tg=tg)	
 	}
+	tg$eq.li = tg.spe.li.to.eq.li(spe.li=tg$spe.li, tg=tg)
 }
 
 #
@@ -391,3 +384,35 @@ solve.sg.spe.given.remove = function(.sg.ind=1, tg, remove.outcomes=NULL, child.
 	nlist(speq.df = speq, eqo.df)
 }
 
+# An equilibrium when we solve a game by gambit an transform it, is specified by an eq.mat.
+# It has one row for each outcome and
+# one column for each variable that is an action or move of nature. The value is the probability that the variable takes in equilibrium the value it has in that row of oco.df.
+tg.spe.li.to.eq.li = function(spe.li,tg, .sg.ind=1) {
+	restore.point("tg.spe.li.to.eq.li")
+	spi = tg$spi.li[[.sg.ind]]
+	ise.df = tg$ise.df
+	speq.df = spe.li[[.sg.ind]]$speq.df
+	
+	num.moves = sum(spi$moves)
+	row = 1
+	
+	et.ind=which(tg$et.mat<0)
+	
+	eq.li = lapply(1:NROW(speq.df), function(row) {
+		speq = speq.df[row,]
+		moves.df = sp.to.moves(speq$sp, spi=spi, ise.df = tg$ise.df, wide=FALSE)
+		
+		# generate a vector as would come out
+		# of gambit
+		ceq = rep(0, num.moves)
+		
+		# insert a 1 for the info set moves taken
+		# in equilibrium
+		ceq[moves.df$.info.set.move.ind] = 1
+		
+		# now use the same conversion as in 
+		# xs_gambit
+		eq.mat = ceq.to.eq.mat(ceq=ceq, eq.ind=row, tg=tg, et.ind=et.ind)
+	})
+	eq.li
+}

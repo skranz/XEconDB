@@ -107,7 +107,7 @@ make.tg.ise.df = function(tg) {
 		#restore.point("sfhdhfhdu")
 		lev$lev.df %>%
 			group_by(.info.set.ind, .info.set, .player) %>%
-			summarize(.num.moves = length(unique(.move.ind)), .num.nodes = sum(.move.ind==1), .lev.num = as.integer(lev$lev.num))
+			summarize(.num.moves = length(unique(.move.ind)), .num.nodes = sum(.move.ind==1), .lev.num = as.integer(lev$lev.num), .info.set.move.ind.start = min(.info.set.move.ind))
 	})
 	tg$ise.df = bind_rows(li)
 	invisible(tg)

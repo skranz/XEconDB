@@ -149,6 +149,11 @@ compute.tg.et.oco.etc = function(tg) {
   tg$vars = unique(c(names(tg$params), tg$lev.vars))
   
   # Equilibrium template matrix
+  # one column for each action variable
+  # and move of nature variable
+  # one row for each outcome
+  # for action variables the value is the 
+  # negative 
   et.mat = matrix(1,NROW(df),length(tg$lev.vars))
   colnames(et.mat) = tg$lev.vars
   for (lev.num in seq_along(tg$lev.li)) {

@@ -4,11 +4,13 @@ example.gambit.solve.eq = function() {
 	
 	gameId = "Cournot"
 	gameId = "MaxUltimatum"
+	gameId = "UltimatumGameSmall"
+	gameId = "RiskyChoice"
 	tg = get.tg(gameId = gameId,never.load = FALSE)
 
-	
+	et.mat = tg$et.mat
 	eq.li = get.eq(tg)
-
+	eq.li
 	  
   alpha = 0.371; beta=0.31
   util.funs = list(ineqAvUtil(1, alpha,beta),ineqAvUtil(2,alpha,beta))
@@ -171,33 +173,43 @@ gambit.solve.eq = function(tg, mixed=FALSE, just.spe=TRUE, efg.file=tg.efg.file.
   et.ind = which(tg$et.mat<0)
   i = 1
   eq.li = lapply(seq_along(ceq.li), function(i) {
-    restore.point("gambit.mixed.eq.inner")
-  	ceq = ceq.li[[i]]
-    # write the returned info set move probabilities
-    # at the right postion of et.mat to get eq.mat
-    eq.mat = tg$et.mat
-    eq.mat[et.ind] = ceq[-eq.mat[et.ind]]
-    .prob = rowProds(eq.mat)
-    eq.mat = cbind(eq.mat, .prob)
-    attr(eq.mat,"eq.ind") = i
-    eq.mat
+  	ceq.to.eq.mat(ceq = ceq.li[[i]],eq.ind=i, et.ind=et.ind, tg=tg)
   })
   
   if (save.eq) {
-  	eq.id = get.eq.id(tg=tg, just.spe = just.spe, mixed=mixed, solvemode=solvemode)
-  	eq = list(
-  		eq.id = eq.id,
-  		tg.id = tg$tg.id,
-  		gameId = tg$gameId,
-  		variant = tg$variant,
-  		jg.hash = tg$jg.hash,
-  		eq.li = eq.li
-  	)
-  	file = paste0(eq.dir,"/",eq.id,".eq")
-  	saveRDS(eq,file)
+	 eq.id = get.eq.id(tg=tg, just.spe = just.spe, mixed=mixed, solvemode=solvemode)
+	 save.eq.li(eq.li=eq.li, eq.id=eq.id,eq.dir=eq.dir,tg=tg)
   }
   
   eq.li
+}
+
+save.eq.li = function(eq.li, eq.id = get.eq.id(tg=tg,...),tg,  eq.dir=get.eq.dir(),...) {
+	eq = list(
+		eq.id = eq.id,
+		tg.id = tg$tg.id,
+		gameId = tg$gameId,
+		variant = tg$variant,
+		jg.hash = tg$jg.hash,
+		eq.li = eq.li
+	)
+	file = paste0(eq.dir,"/",eq.id,".eq")
+	saveRDS(eq,file)
+}
+
+# ceq is the returned vector by gambit describing an equilibrium
+# it is a vector with as many elements as 
+# information set moves and contains values between 0 and 1, describing the move probabilty for each information set. A pure strategy contains only 0s and 1s.
+# We convert it to eq.mat by writing the returned info set move probabilities at the right postion of et.mat.
+ceq.to.eq.mat = function(ceq,eq.ind=1, tg,et.ind=which(tg$et.mat<0)) {
+  restore.point("ceq.to.eq.mat")
+  eq.mat = tg$et.mat
+  eq.mat[et.ind] = ceq[-eq.mat[et.ind]]
+  .prob = rowProds(eq.mat)
+  eq.mat = cbind(eq.mat, .prob)
+  attr(eq.mat,"eq.ind") = eq.ind
+  eq.mat
+	
 }
 
 get.eq.id = function(tg.id=tg$tg.id, just.spe=TRUE, mixed=FALSE, tg=NULL, solvemode=NULL) {
