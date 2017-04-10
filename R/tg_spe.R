@@ -7,6 +7,7 @@ examples.make.tg.spe = function() {
   setwd("D:/libraries/XEconDB/projects/UltimatumGame")
 	tg = get.tg(gameId="BunchedUltimatum", never.load=TRUE)
 	tg = get.tg(gameId="TwoChoices",never.load = TRUE)
+	tg = get.tg(gameId="LureOfAuthorityReduced")
 	set.tg.util(tg)
 	make.tg.iso.df(tg)
 	make.tg.ise.df(tg)

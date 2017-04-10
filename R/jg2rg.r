@@ -12,9 +12,11 @@ examples.jg.to.rg = function() {
 	setwd("D:/libraries/XEconDB/projects/UltimatumGame/")
   
 	gameId = "LureOfAuthorityReduced"
+	gameId = "AB"
 	jg = get.jg(gameId = gameId)
 	rg = jg.to.rg(jg)
-
+	varpar = rg$varpar
+	varpar	
 }
 
 
@@ -141,7 +143,9 @@ parse.jg.params = function(params, baseline=NULL,variant, kel, eval.formula = TR
 }
 
 convert.atom = function(x, remove.quotes = TRUE) {
-  y = suppressWarnings(as.logical(x))
+  if (!is.character(x)) return(x)
+	
+	y = suppressWarnings(as.logical(x))
   if (!all(is.na(y))) return(y)
   y = suppressWarnings(as.numeric(x))
   if (!(all(is.na(y)))) return(y)
