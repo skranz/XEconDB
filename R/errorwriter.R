@@ -32,6 +32,7 @@ keyErrorLog = function(stop=FALSE, append.char="<br>", line.break.char="<br>") {
   kel$write = function(message,...,terminate=FALSE, params=c(kel$params,list(...)), key=kel$key, message.type="error", append=TRUE, do.stop=kel$stop) {
     params = c(params,list(...))
     restore.point("kel$write")
+    #cat("\nkel: ");print(kel)
     # format vector params by default
     params = lapply(params, function(param) paste0(param, collapse=",  "))
     message = replace.whiskers(message, params, eval=FALSE)

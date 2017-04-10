@@ -22,9 +22,12 @@
 
 examples.vg.to.tg = function() {
   setwd("D:/libraries/XEconDB/projects/UltimatumGame")
+	
+	restore.point.options(display.restore.point=TRUE)
  
-	vg = get.vg(gameId="MaxUltimatum")
-  tg = vg.to.tg(vg)
+	vg = get.vg(gameId="LureOfAuthority")
+	vg$kel
+  tg = vg.to.tg(vg, branching.limit = 1)
   et.mat = tg$et.mat
   oco.df = tg$oco.df
   lev.li = tg$lev.li
@@ -34,16 +37,21 @@ tg.msg.fun = function(...) {
 	cat(paste0("\n",...))
 }
 
-vg.to.tg = function(vg, max.rows = Inf, add.sg=TRUE, add.spi=TRUE, add.spo=FALSE, msg.fun = tg.msg.fun) {
+vg.to.tg = function(vg, branching.limit = Inf, add.sg=TRUE, add.spi=TRUE, add.spo=FALSE, msg.fun = tg.msg.fun) {
   restore.point("vg.to.tg")
+	
+	branching.limit = as.numeric(branching.limit)
+	
 	
 	if (is.null(msg.fun)) msg.fun = function(...) {}
 	msg.fun("Compute game tree for ", vg$gameId," variant ", vg$variant,"...")
 
   tg = new.env()
-  tg$kel = vg$kel
-  
-  tg$max.rows = max.rows
+  tg$kel = keyErrorLog()
+  restore.point("vg.to.tg.inner")
+
+    
+  tg$branching.limit = branching.limit
   
   tg$gameId = vg$gameId
   tg$variant = vg$variant
@@ -73,8 +81,16 @@ vg.to.tg = function(vg, max.rows = Inf, add.sg=TRUE, add.spi=TRUE, add.spo=FALSE
  		msg.fun("Gametree for ", vg$gameId," variant ", vg$variant,": Add stage ", vg$stages[[stage.num]]$name, " (", NROW(tg$stage.df)," outcomes so far) ...")
     tg$kel$setKey("stages", stage.num)
     stage <- try(compute.tg.stage(stage.num, tg, vg, tg$kel))
-    if (tg$kel$count>0) return(tg)
-
+    if (tg$kel$count>0) {
+    	return(tg)
+    }
+		
+    # unaccounted error
+    if (is(stage,"try-error")) {
+			compute.tg.stage(stage.num, tg, vg, tg$kel)	
+		}
+    
+    
 
     tg$lev.li
     tg$stage.df
@@ -168,6 +184,7 @@ compute.tg.stage = function(stage.num, tg, vg, kel) {
   restore.point("compute.tg.stage")
   vg.stage = vg$stages[[stage.num]]
   stage = as.environment(list(
+  	name = vg.stage$name,
     stage.num = stage.num
   ))
 
@@ -178,6 +195,15 @@ compute.tg.stage = function(stage.num, tg, vg, kel) {
   tg.compute.stage.condition(tg, stage, vg.stage, prev.stage.df, prev.know.li, kel)
   stage$stage.df
   stage$know.li
+  
+  # the stage will never be played in this variant
+  if (NROW(stage$stage.df)==0) {
+  	stage$stage.df = prev.stage.df
+  	stage$know.li = prev.know.li
+  	tg$stage.df = prev.stage.df
+  	tg$know.li = prev.know.li
+  	return(stage)  	
+  }
   
   # compute player set for each node
   kel$setKey(base.key,"player")
@@ -272,6 +298,8 @@ tg.compute.stage.players = function(tg, stage, vg.stage, kel) {
   restore.point("tg.compute.stage.players")
   # compute player set for each node
   df = stage$stage.df
+  if (NROW(df)==0) return()
+  
   call = vg.stage$player
   
   # fixed player sets
@@ -338,11 +366,16 @@ tg.update.stage.knowledge = function(tg, stage, vg.stage, kel) {
   know.li = stage$know.li
   df = stage$stage.df
   restore.point("tg.update.stage.knowledge")
-  
+
+  #observable = unlist(c(colnames(df),get.names(vg.stage$nature),if (length(vg.stage$actions)==0) get.names(vg.stage$compute)))
+
+   observable = unlist(c(colnames(df)))
+ 
+      
   # observe is fixed, no formula
   if (!is(observe, "call")) {
     if (length(observe)==0 | identical(observe,"")) return(know.li)
-    if (length(unknown <- setdiff(observe, colnames(df)))>0) {
+    if (length(unknown <- setdiff(observe, observable))>0) {
       kel$error("You cannot observe the variable(s) {{unknown}}, because they have not been defined earlier.", unknown=unknown)
     }
     
@@ -365,8 +398,10 @@ tg.update.stage.knowledge = function(tg, stage, vg.stage, kel) {
   if (length(vars)==0) {
     kel$error("Please only use a formula in observe if the observed variables depend on some earlier defined parameter or variable.")
   }
-  
-  if (length(unknown <- setdiff(vars, colnames(df)))>0) {
+
+  if (length(unknown <- setdiff(observe, observable))>0) {
+  	
+  	
     kel$error("Your observe formula depends on the variables {{unknown}}, which have not been defined earlier.", unknown=unknown)
   }
   
@@ -414,8 +449,10 @@ compute.action.level = function(tg,stage, action,lev.df, know.li, kel) {
   kel$withKey(sub.key = "set",
     kel.check.call.vars(action$set,names(lev.df),kel=kel)
   )
+ 
+  tg.check.branching.limit(tg=tg, lev.df = lev.df, kel=kel, stage=stage, var=var)
 
-  
+
   # remove var column
   # neccessary if for other conditions
   # it has been defined before
@@ -437,8 +474,8 @@ compute.action.level = function(tg,stage, action,lev.df, know.li, kel) {
   tg$info.set.counter = max(.info.set.ind)
   
   # eval set
+ 
   lev.df = eval.set.to.df(action$set, lev.df, var)
-  tg.check.max.rows(tg=tg, lev.df = lev.df, kel=kel)
   
   
   lev.df = lev.df %>% 
@@ -533,12 +570,17 @@ compute.nature.level = function(tg,stage, randomVar, lev.df, know.li, kel) {
   kel$withKey(sub.key = "probs",
     kel.check.call.vars(randomVar$probs,names(lev.df),kel=kel)
   )
- 
+
+  tg.check.branching.limit(tg=tg, lev.df = lev.df, kel=kel, stage=stage, var=var)
+  
+   
   # don't remove .player etc!
-  lev.df = remove.cols(lev.df,c(var, ".info.set",".move.ind"))
+  lev.df = remove.cols(lev.df,c(var, ".info.set",".move.ind",".move.prob"))
   lev.df$.node.ind = seq.int(NROW(lev.df))
-  lev.df = eval.randomVar.to.df(randomVar$set,randomVar$prob,df = lev.df, var=var,kel = kel,prob.col = ".move.prob")
-  tg.check.max.rows(tg=tg, lev.df = lev.df, kel=kel)
+
+
+  
+   lev.df = eval.randomVar.to.df(randomVar$set,randomVar$prob,df = lev.df, var=var,kel = kel,prob.col = ".move.prob")
   
   # adapt outcome probs
 	lev.df$.prob = lev.df$.prob * lev.df$.move.prob 
@@ -728,9 +770,12 @@ kel.check.call.vars = function(call, known.vars, kel) {
   
 }
 
-tg.check.max.rows = function(tg, lev.df, kel=tg$kel) {
-	if (isTRUE(NROW(lev.df) > tg$max.rows)) {
-    kel$error(paste0("Maximum size of outcomes .", tg$max.rows, " has been exceeded. Stop checking..."))
+tg.check.branching.limit = function(tg, lev.df, kel=tg$kel, stage=list(name="?"), var="?") {
+
+	if (isTRUE(NROW(lev.df) > tg$branching.limit)) {
+		restore.point("branchingLimitReached")			
+			
+    kel$error(paste0("Before generating the nodes for variable '",var,"' in stage '", stage$name,"', we already have ", NROW(lev.df)," game tree branches, which exceeds the branching limit of ",tg$branching.limit, ". To generate the game tree, you need to increase the branching limit, but depending on your hardware, you may run into memory problems. Alternatively, you can try to reformulate the game in a way that yields a smaller game tree."))
 	}
 	
 }

@@ -79,9 +79,13 @@ xs.eq.ui = function(gameId, xs = app$xs, app=getApp()) {
 	)
 		
 	buttonHandler(ns("solveBtn"),function(formValues,...) {
-		xeq.solve(xeq=xeq, formValues=formValues, clear=TRUE, never.load = xs$never.load.tg)
-		xeq.show.tg.info(xeq)
-		xeq.show.eqo(xeq)
+		restore.point("xeqSolveClick")
+		ok = xeq.solve(xeq=xeq, formValues=formValues, clear=TRUE, never.load = xs$never.load.tg)
+		
+		if (ok) {
+			xeq.show.tg.info(xeq)
+			xeq.show.eqo(xeq)
+		}
 	})
 	
 
@@ -103,6 +107,7 @@ xeq.solve = function(xeq, formValues,clear=TRUE,  never.load=TRUE) {
 	branching.limit = unlist(formValues[[ns("branchingLimit")]])
 	sp.limit = unlist(formValues[[ns("spLimit")]])
 	solvemode = unlist(formValues[[ns("solvemode")]])
+	xeq$solvemode = solvemode
 		
 	if (reduce.method=="reduce") {
 		reduce.vec = TRUE
@@ -116,16 +121,23 @@ xeq.solve = function(xeq, formValues,clear=TRUE,  never.load=TRUE) {
 	xeq$sel.prefs = xeq$prefs[pref_names]
 	xeq$eqo.li = xeq$eq.li = list()
 
-	timedMessage(ns("tgmsg"),msg=paste0("Solve SPE for variants ",paste0(variants,collapse=", ")))
+	timedMessage(ns("tgmsg"),msg=paste0("Solve equilibria for variants ",paste0(variants,collapse=", ")))
 	
 	msg.fun = function(...) {
 		msg = paste0(...)
 		timedMessage(ns("tgmsg"),msg=msg,millis = Inf)
 	}
+	variant = xeq$sel.variants[[1]]
 	for (variant in xeq$sel.variants) {
 		msg = paste0("Create or load game tree for variant ",variant,"... ")
 		timedMessage(ns("tgmsg"),msg=msg)
-		org.tg = get.tg(gameId=xeq$gameId, variant=variant, rg=xeq$rg, msg.fun=msg.fun, never.load=never.load)
+		org.tg = get.tg(gameId=xeq$gameId, variant=variant, rg=xeq$rg, msg.fun=msg.fun, never.load=never.load, branching.limit = branching.limit)
+		
+		if (org.tg$kel$count>0) {
+    	timedMessage(ns("tgmsg"),paste0("There are problems:<br>",paste0(org.tg$kel$log, collapse="<br>\n")),millis = Inf)
+    	return(FALSE)
+  	}
+
 		
 		solver = xeq.solvemode.to.solver(solvemode, n=org.tg$params$numPlayers)
 		just.make.tg= (solvemode == "gametree")
@@ -135,11 +147,11 @@ xeq.solve = function(xeq, formValues,clear=TRUE,  never.load=TRUE) {
 			set.tg.pref(pref,tg)
 			for (reduce in reduce.vec) {
 				if (reduce) {
-					msg = paste0("Solve all pure SPE for reduced variant ",variant," for pref ", pref$name,"... ")
+					msg = paste0("Solve equilibria for reduced variant ",variant," for pref ", pref$name,"... ")
 					timedMessage(ns("tgmsg"),msg=msg)
 					tg = reduce.tg(tg)
 				} else {
-					msg = paste0("Solve all pure SPE for variant ",variant," for pref ", pref$name,"... ")
+					msg = paste0("Solve equilibria for variant ",variant," for pref ", pref$name,"... ")
 					timedMessage(ns("tgmsg"),msg=msg)
 				}
 				id = tg$tg.id
@@ -158,6 +170,7 @@ xeq.solve = function(xeq, formValues,clear=TRUE,  never.load=TRUE) {
 		}
 	}
 	timedMessage(ns("tgmsg"),msg=paste0("Equilibria have been generated..."))
+	return(TRUE)
 
 }
 
@@ -174,6 +187,13 @@ xeq.show.tg.info = function(xeq) {
 xeq.show.eqo = function(xeq) {
 	ns = xeq$ns
 	restore.point("xeq.show.eqo")
+	
+	if (isTRUE(xeq$solvemode=="gametree")) {
+		ui = p("")
+		setUI(ns("eqsUI"),ui)
+		dsetUI(ns("eqsUI"),ui)
+		return()
+	}
 	
 	eqo.df = bind_rows(xeq$eqo.li)
 	html = html.table(eqo.df)

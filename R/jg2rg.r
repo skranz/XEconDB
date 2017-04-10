@@ -8,6 +8,16 @@
 # tg: extensive table form game, derived from a variant game
 # efg: Gambit extensive form game format
 
+examples.jg.to.rg = function() {
+	setwd("D:/libraries/XEconDB/projects/UltimatumGame/")
+  
+	gameId = "LureOfAuthorityReduced"
+	jg = get.jg(gameId = gameId)
+	rg = jg.to.rg(jg)
+
+}
+
+
 jg.to.rg = function(jg) {
   restore.point("jg.to.rg")
   rg = new.env()
@@ -17,7 +27,7 @@ jg.to.rg = function(jg) {
   rg$gameInfo = jg$gameInfo
   parse.jg.varpar(rg,jg)
   parse.jg.stages(rg,jg)
-  rg$varpar
+  varpar = rg$varpar
   rg$stages
   
   rg$jg.hash = digest(jg)
@@ -131,10 +141,10 @@ parse.jg.params = function(params, baseline=NULL,variant, kel, eval.formula = TR
 }
 
 convert.atom = function(x, remove.quotes = TRUE) {
-  y = suppressWarnings(as.numeric(x))
-  if (!(all(is.na(y)))) return(y)
   y = suppressWarnings(as.logical(x))
   if (!all(is.na(y))) return(y)
+  y = suppressWarnings(as.numeric(x))
+  if (!(all(is.na(y)))) return(y)
   if (remove.quotes) {
     quoted = substring(x,1,1) == '"'
     x[quoted] = substring(x[quoted],2,nchar(x[quoted])-1)

@@ -466,7 +466,7 @@ xs.check.game.click = function(json, value, gameId,..., xs= app$xs, app=getApp()
     return(FALSE)
   }
   
-  #tg = get.tg(vg=vg, games.dir=xs$games.dir,max.rows=1000)
+  #tg = get.tg(vg=vg, games.dir=xs$games.dir,branching.limit=1000)
   
   #if (tg$kel$count>0) {
   #  callJS("xecon.showGameTreeErrors",gameId, tg$kel$log)

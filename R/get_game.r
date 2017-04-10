@@ -91,7 +91,7 @@ get.vg = function(variant=1, gameId = first.non.null(jg$gameId,rg$gameId), jg.ha
 	vg
 }
 
-get.tg = function(variant=first.non.null(vg$variant,1), gameId = first.non.null(vg$gameId,jg$gameId,rg$gameId), jg.hash = get.jg.hash(jg=jg, rg=rg,vg=vg),jg=NULL,rg=NULL, vg=NULL, tg=NULL, games.dir = get.games.dir(project.dir), project.dir = get.project.dir(), save.new = TRUE,max.rows = 1e8,msg.fun=NULL, never.load = FALSE) {
+get.tg = function(variant=first.non.null(vg$variant,1), gameId = first.non.null(vg$gameId,jg$gameId,rg$gameId), jg.hash = get.jg.hash(jg=jg, rg=rg,vg=vg),jg=NULL,rg=NULL, vg=NULL, tg=NULL, games.dir = get.games.dir(project.dir), project.dir = get.project.dir(), save.new = TRUE,branching.limit = 10000,msg.fun=NULL, never.load = FALSE) {
 	if (!is.null(tg)) return(tg)
 	restore.point("get.tg")
 	
@@ -116,7 +116,10 @@ get.tg = function(variant=first.non.null(vg$variant,1), gameId = first.non.null(
 
 	vg = get.vg(variant=variant, gameId=gameId, jg=jg, rg=rg, vg=vg, jg.hash=jg.hash, games.dir=games.dir)
 
-	tg = vg.to.tg(vg,max.rows = max.rows, msg.fun=msg.fun)
+	tg = vg.to.tg(vg,branching.limit = branching.limit, msg.fun=msg.fun)
+	if (tg$kel$count>0) {
+		return(tg)
+	}
 	if (save.new) {
 		if (!is.null(msg.fun)) msg.fun("Save game tree in ",file,"...")
 		saveRDS(tg, file)

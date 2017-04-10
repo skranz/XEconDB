@@ -4,8 +4,9 @@
 # 1. Set variant and params
 # 2. TO DO: Remove stages whose condition always fails in this variant
 
+
 rg.to.vg = function(rg, variant=1) {
-  restore.point("jg.to.rg")
+  restore.point("rg.to.vg")
   vg = new.env()
   vg$kel = keyErrorLog()
   vg$gameId = rg$gameId
