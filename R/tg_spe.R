@@ -8,9 +8,11 @@ examples.make.tg.spe = function() {
 	
 	gameId = "LureOfAuthorityReduced"
 	gameId = "CournotSmall"
-	gameId = "UltimatumGameSmall"
+	gameId = "BunchedUltimatum"
 	
 	tg = get.tg(gameId=gameId, never.load=TRUE)
+	sort(unlist(lapply(as.list(tg), object.size)),decreasing = TRUE)
+	
 	make.tg.spo.li(tg)
 	
 	spo.df = tg$spo.li[[1]]
@@ -324,7 +326,7 @@ solve.sg.spe = function(.sg.ind=1, tg) {
 	# vector of all possible outcomes (oco rows) of
 	# child subgames
 	child.sg.outcomes = unique(unlist(lapply(child.sg, function(cind) {
-		tg$sg.df$.outcomes
+		tg$sg.df$.outcomes[[cind]]
 	})))
 	
 	
