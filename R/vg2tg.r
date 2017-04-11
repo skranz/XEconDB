@@ -113,7 +113,7 @@ vg.to.tg = function(vg, branching.limit = Inf, add.sg=TRUE, add.spi=TRUE, add.sp
 
  	make.tg.know.var.groups(tg)
   make.tg.ise.df(tg)
-  make.tg.iso.df(tg)
+  #make.tg.iso.df(tg)
   
   # set payoff utility as standard
   set.tg.util(tg=tg)

@@ -6,23 +6,31 @@
 examples.make.tg.spe = function() {
   setwd("D:/libraries/XEconDB/projects/UltimatumGame")
 	
-	gameId = "RiskyChoice"
-	gameId = "UltimatumGameSmall"
+	gameId = "LureOfAuthorityReduced"
+	gameId = "CournotSmall"
+	gameId = "UltimatumGame"
+	
 	tg = get.tg(gameId=gameId, never.load=TRUE)
 	make.tg.spo.li(tg)
+	
+	spo.df = tg$spo.li[[1]]
+	
+	sg.df = tg$sg.df
+	make.sg.spo.df(.sg.ind=3, tg=tg)
 	tg$spo.li
 	
 	solve.all.tg.spe(tg=tg)
 	tg$spe.li
 	eqo.df = tg$spe.li[[1]]$eqo.df
-	
-	solve.sg.spe(.sg.ind = 1, tg=tg)
-	tg$spe.li
 	eq.li = tg$eq.li
+	eq.li
+	
+	eqo.df = eq.outcomes(eq.li, tg=tg)
 	
 	gambit.eq.li = gambit.solve.eq(tg)
 	eq.li
 	gambit.eq.li
+	identical(eq.li, gambit.eq.li)
 	
 	eq.li = tg.spe.li.to.eq.li(tg)
 }
@@ -57,11 +65,15 @@ make.sg.spi = function(.sg.ind=1,tg, include.descendants=FALSE) {
   	.info.set.inds = tg$sgi.df$.info.set.ind[tg$sgi.df$.sg.ind==.sg.ind & tg$sgi.df$.in.descendant==FALSE]
   }
   
-	spi = tg$iso.df %>%
-  	filter(.info.set.ind %in% .info.set.inds) %>%
-  	group_by(.player,.lev.num, .info.set.ind) %>%
-  	summarise(moves = length(.move.ind)) %>%
-		ungroup()
+	spi = tg$ise.df %>% ungroup() %>%
+		select(.player, .lev.num, .info.set.ind, .var, .num.moves) %>%
+		rename(moves = .num.moves)
+	
+# 	spi = tg$iso.df %>%
+#   	filter(.info.set.ind %in% .info.set.inds) %>%
+#   	group_by(.player,.lev.num, .info.set.ind) %>%
+#   	summarise(moves = max(.move.ind)) %>%
+# 		ungroup()
   
 	# these indexes will be used for fast computation
 	# of the spo table                          
@@ -69,7 +81,6 @@ make.sg.spi = function(.sg.ind=1,tg, include.descendants=FALSE) {
   spi$move.mult = rev(c(1,cumprod(rev(spi$moves[-1]))))
   
   spi
-
 }
 
 
@@ -79,14 +90,13 @@ make.sg.spo.df = function(.sg.ind = 1, sg.df = tg$sg.df, sgi.df = tg$sgi.df, spi
 	# we need to specify outcomes for each strategy profile
 	# of each subgame
 	sg.df = sg.df[sg.df$.sg.ind == .sg.ind,]
-	sgi.df = sgi.df[sg.df$.sg.ind == .sg.ind,]
+	sgi.df = sgi.df[sgi.df$.sg.ind == .sg.ind,]
 	spi = tg$spi.li[[.sg.ind]]
 	
 	.info.set.inds = spi$.info.set.ind
 	
 	ise.df = filter(tg$ise.df, .info.set.ind %in% .info.set.inds)
-	iso.df = filter(tg$iso.df, .info.set.ind %in% .info.set.inds)
-	
+
 
 	# relevant outcomes for this subgame	
 	outcomes = sg.df$.outcomes[[1]]
@@ -105,22 +115,22 @@ make.sg.spo.df = function(.sg.ind = 1, sg.df = tg$sg.df, sgi.df = tg$sgi.df, spi
   # and apply the stuff for each chunk seperately
   feas.mat = matrix(TRUE,n.sp,n.out )
   
-  #iso.infeasible = iso.df$.infeasible
-
   ise.ind = 1
   move.ind = 1
   iso.row = 0
   for (ise.ind in seq_len(n.ise)) {
   	# outcome values of the variable
   	# that is decided at this info set
-  	.char.oco.val = as.character(oco.df[[iso.df$.var[iso.row+1] ]])
+  	char.move.vals = as.character(ise.df$.move.vals[[ise.ind]])
+  	var = ise.df$.var[ise.ind]
+  	.char.oco.val = as.character(oco.df[[var]])
   	is.ise.oco = find.info.set.outcomes(.info.set.ind = ise.df$.info.set.ind[ise.ind],tg = tg, oco.df=oco.df,return.logical = TRUE)
   	
   	#move.ind = 1
     for (move.ind in seq_len(spi$moves[ise.ind])) {
       iso.row = iso.row + 1
       
-      .char.move.val = iso.df$.char.move.val[iso.row]
+      .char.move.val = char.move.vals[move.ind]
       
       #infeas = match(iso.infeasible[[iso.row]], outcomes)
       # infeasible outcomes have a different
@@ -170,7 +180,7 @@ moves.to.sp = function(moves,spi) {
 
 # strategy profile index to matrix of moves at each information set
 sp.to.moves = function(sp, spi=tg$spi, ise.df=NULL, wide=TRUE) {
-  
+  restore.point("sp.to.moves")
 
   moves = matrix(0, NROW(sp), NROW(spi))
   
@@ -188,9 +198,10 @@ sp.to.moves = function(sp, spi=tg$spi, ise.df=NULL, wide=TRUE) {
     return(moves)
   }
   
+  org.sp = sp
   moves.df = data_frame(
     sp = rep(sp,times=NCOL(moves)),
-  	.info.set.ind = rep(spi$.info.set.ind, each = length(sp)),
+  	.info.set.ind = rep(spi$.info.set.ind, each = length(org.sp)),
     .move.ind = as.vector(moves),
   	.info.set.move.ind = .move.ind - 1 + ise.df$.info.set.move.ind.start[.info.set.ind]
   )
@@ -227,8 +238,16 @@ sp.to.sp_i = function(player = 1,sp, spi) {
 	sp_i
 }
 
-solve.all.tg.spe = function(tg) {
+get.tg.spo.li = function(tg) {
+	make.tg.spo.li(tg)
+}
+
+solve.all.tg.spe = function(tg, eq.dir = get.eq.dir(), save.eq=TRUE) {
 	restore.point("solve.all.tg.spe")
+	
+	if (is.null(tg[["spo.li"]])) {
+		get.tg.spo.li(tg)
+	}
 	
 	# solve via backward induction
 	.sg.inds = rev(unique(tg$sg.df$.sg.ind))
@@ -239,6 +258,13 @@ solve.all.tg.spe = function(tg) {
 		tg$spe.li[[.sg.ind]] = solve.sg.spe(.sg.ind = .sg.ind, tg=tg)	
 	}
 	tg$eq.li = tg.spe.li.to.eq.li(spe.li=tg$spe.li, tg=tg)
+	
+	if (save.eq) {
+		eq.id = get.eq.id(tg=tg,solvemode="spe_xs")
+		save.eq.li(eq.li=tg$eq.li, tg=tg, eq.id=eq.id, eq.dir = eq.dir)
+	}
+	
+	invisible(tg$eq.li)
 }
 
 #
@@ -270,6 +296,8 @@ solve.sg.spe = function(.sg.ind=1, tg) {
 	# 2. We solve the subgame for each row of that grid
 
 	
+	restore.point("solve.sg.spe")
+	
 	# all children subgames
 	child.sg = get.child.subgames(.sg.ind, tg)
 	
@@ -300,7 +328,7 @@ solve.sg.spe = function(.sg.ind=1, tg) {
 	
 	# loop through each child subgame eq. outcome combination
 	# and compute corresponding spe of this subgame
-	eq.li = lapply(NROW(eqo.grid), function(grid.row) {
+	eq.li = lapply(seq_len(NROW(eqo.grid)), function(grid.row) {
 		eqo.outcomes =  unique(unlist(lapply(seq_along(child.sg), function(i) {
 			cind = child.sg[i]
 			.eqo.ind = eqo.grid[grid.row,i]
@@ -329,6 +357,8 @@ solve.sg.spe.given.remove = function(.sg.ind=1, tg, remove.outcomes=NULL, child.
 	restore.point("solve.sg.spe.givem.remove")
 	
 	spo.df = tg$spo.li[[.sg.ind]]
+	
+	#df = left_join(spo.df, tg$oco.df, by=".outcome")
 	
 	if (!is.null(remove.outcomes)) {
 		rows = !spo.df$.outcome %in% remove.outcomes
@@ -389,30 +419,79 @@ solve.sg.spe.given.remove = function(.sg.ind=1, tg, remove.outcomes=NULL, child.
 # one column for each variable that is an action or move of nature. The value is the probability that the variable takes in equilibrium the value it has in that row of oco.df.
 tg.spe.li.to.eq.li = function(spe.li,tg, .sg.ind=1) {
 	restore.point("tg.spe.li.to.eq.li")
-	spi = tg$spi.li[[.sg.ind]]
-	ise.df = tg$ise.df
 	speq.df = spe.li[[.sg.ind]]$speq.df
 	
-	num.moves = sum(spi$moves)
+	num.moves = sum(tg$ise.df$.num.moves * tg$ise.df$.num.nodes)
+	ceq.start = matrix(0, nrow=1, ncol=num.moves)
+
 	row = 1
-	
-	et.ind=which(tg$et.mat<0)
-	
-	eq.li = lapply(1:NROW(speq.df), function(row) {
+	ceq.li = lapply(1:NROW(speq.df), function(row) {
 		speq = speq.df[row,]
-		moves.df = sp.to.moves(speq$sp, spi=spi, ise.df = tg$ise.df, wide=FALSE)
-		
-		# generate a vector as would come out
-		# of gambit
-		ceq = rep(0, num.moves)
-		
-		# insert a 1 for the info set moves taken
-		# in equilibrium
-		ceq[moves.df$.info.set.move.ind] = 1
-		
-		# now use the same conversion as in 
-		# xs_gambit
-		eq.mat = ceq.to.eq.mat(ceq=ceq, eq.ind=row, tg=tg, et.ind=et.ind)
+		recursive.speq.to.ceq(speq = speq,ceq = ceq.start,.sg.ind = .sg.ind,tg = tg, spe.li=spe.li)
 	})
+	ceq.mat = do.call(rbind,ceq.li)
+
+	et.ind=which(tg$et.mat<0)
+
+	# now use the same conversion as in 
+	# xs_gambit
+	eq.li = lapply(seq_len(NROW(ceq.mat)), function(row) {
+		eq.mat = ceq.to.eq.mat(ceq=ceq.mat[row,], eq.ind=row, tg=tg, et.ind=et.ind)
+	})
+		
 	eq.li
+}
+
+
+recursive.speq.to.ceq = function(ceq, speq, .sg.ind, tg, spe.li=tg$spe.li) {
+	restore.point("recursive.speq.to.ceq")
+	
+	spi = tg$spi.li[[.sg.ind]]
+	cat("\n.sg.ind = ", .sg.ind, " NROW(ceq) = ",NROW(ceq))
+	 
+	moves.df = sp.to.moves(speq$sp, spi=spi, ise.df = tg$ise.df, wide=FALSE)
+
+	# insert a 1 for the info set moves taken
+	# in equilibrium
+	ceq[,moves.df$.info.set.move.ind] = 1
+	
+	# all children subgames	
+	child.sg = get.child.subgames(.sg.ind, tg)
+	
+	# no more subgames => we are done
+	if (length(child.sg)==0) {
+		return(ceq)
+	}
+	
+	# child.eqo
+	# for each subgame we have a
+	# single equilibrium outcome
+	child.eqo = speq$child.eqo.inds[[1]]
+
+	# yet there may be multiple child
+	# equilibria associated with a
+	# child outcome
+
+	restore.point("recursive.speq.to.ceq.2")
+	# loop through all child.sg
+	i = 1
+	for (i in seq_along(child.sg)) {
+		# get all speq (subgame equilibria)
+		# of the current child sg
+		cdf = spe.li[[ child.sg[i] ]]$speq.df
+		cdf = cdf[cdf$.eqo.ind == child.eqo[i],]
+		
+		# loop through all subgame equilibria
+		# of the current child subgame
+		ceq.li = lapply(seq_len(NROW(cdf)), function(row) {
+			restore.point("recursive.speq.to.ceq.3")
+			speq = cdf[row,]
+			recursive.speq.to.ceq(speq=speq,ceq = ceq,.sg.ind = child.sg[i],tg = tg, spe.li=spe.li)
+			
+		})
+		# for each subgame equilibrium
+		# we get new ceq rows
+		ceq = do.call(rbind,ceq.li)
+	}
+	ceq
 }

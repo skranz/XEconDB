@@ -167,7 +167,7 @@ reduce.tg = function(tg) {
   # later on
   make.tg.know.var.groups(rtg)
   make.tg.ise.df(rtg)
-  make.tg.iso.df(rtg)
+  #make.tg.iso.df(rtg)
   
   # set payoff utility as standard
   set.tg.util(tg=rtg,util.funs = rtg$util.funs)
@@ -274,7 +274,7 @@ old.reduce.tg = function(tg) {
   # later on
   make.tg.know.var.groups(rtg)
   make.tg.ise.df(rtg)
-  make.tg.iso.df(rtg)
+  #make.tg.iso.df(rtg)
   
   # set payoff utility as standard
   set.tg.util(tg=rtg)

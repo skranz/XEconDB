@@ -3,7 +3,7 @@ examples.make.tg.iso.df = function() {
 	tg = get.tg(gameId="BunchedUltimatum", never.load=TRUE)
 	tg = get.tg(gameId="TwoChoices",never.load = TRUE)
 	set.tg.util(tg)
-	make.tg.iso.df(tg)
+	#make.tg.iso.df(tg)
 	make.tg.ise.df(tg)
 	ise.df = tg$ise.df
 	iso.df = tg$iso.df
@@ -32,7 +32,7 @@ examples.make.tg.iso.df = function() {
 
 
 
-
+# not clear whether we still need iso.df...
 make.tg.iso.df = function(tg) {
 	tg$iso.df = tg.to.iso.df(tg)
 }
@@ -104,10 +104,13 @@ make.tg.ise.df = function(tg) {
 	tg$action.levels = which(sapply(tg$lev.li, function(lev) lev$type=="action"))
 	
 	li = lapply(tg$lev.li[tg$action.levels], function(lev) {
-		#restore.point("sfhdhfhdu")
-		lev$lev.df %>%
-			group_by(.info.set.ind, .info.set, .player) %>%
-			summarize(.num.moves = length(unique(.move.ind)), .num.nodes = sum(.move.ind==1), .lev.num = as.integer(lev$lev.num), .info.set.move.ind.start = min(.info.set.move.ind))
+		restore.point("sfhdhfhdu")
+		lev.df = lev$lev.df
+		lev.df$.val = lev.df[[lev$var]]
+		lev.df$.var = lev$var
+		lev.df %>%
+			group_by(.info.set.ind, .info.set, .player, .var) %>%
+			summarize(.num.moves = length(unique(.move.ind)), .num.nodes = sum(.move.ind==1), .lev.num = as.integer(lev$lev.num), .info.set.move.ind.start = min(.info.set.move.ind),.move.vals = list(unique(.val)))
 	})
 	tg$ise.df = bind_rows(li)
 	invisible(tg)

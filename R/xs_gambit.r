@@ -123,6 +123,12 @@ gambit.solve.eq = function(tg, mixed=FALSE, just.spe=TRUE, efg.file=tg.efg.file.
   
   restore.point("gambit.solve.eq")
   
+	# internal solver not using gambit
+	if (isTRUE(solvemode=="spe_xs")) {
+		return(solve.all.tg.spe(tg=tg, eq.dir=eq.dir,save.eq=save.eq))
+		
+	}
+	
   if (is.null(solver)) {
     if (!mixed) {
       solver = "gambit-enumpure -q"     

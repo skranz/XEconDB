@@ -40,7 +40,8 @@ xs.eq.ui = function(gameId, xs = app$xs, app=getApp()) {
 	rg = xeq$rg
 	
 	xeq$solve.modes = list(
-		"All pure SPE"="spe",
+		"All pure SPE (Gambit)"="spe",
+		"All pure SPE (internal)"="spe_xs",
 		"Just Gametree"="gametree",
 		"All pure NE"="ne",
 		"All NE (including mixed)"="ne_am",
