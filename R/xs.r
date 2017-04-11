@@ -4,7 +4,7 @@ xecon.glob = new.env()
 
 examples.xsApp = function() {
   projects.dir = "D:/libraries/XEconDB/projects"
-  app = xsApp(projects.dir, never.load.tg=TRUE)
+  app = xsApp(projects.dir, never.load.tg=FALSE)
   viewApp(app)
   viewApp(app,launch.browser = TRUE)
 }

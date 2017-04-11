@@ -110,7 +110,8 @@ make.tg.ise.df = function(tg) {
 		lev.df$.var = lev$var
 		lev.df %>%
 			group_by(.info.set.ind, .info.set, .player, .var) %>%
-			summarize(.num.moves = length(unique(.move.ind)), .num.nodes = sum(.move.ind==1), .lev.num = as.integer(lev$lev.num), .info.set.move.ind.start = min(.info.set.move.ind),.move.vals = list(unique(.val)))
+			summarize(.num.moves = length(unique(.move.ind)), .num.nodes = sum(.move.ind==1), .lev.num = as.integer(lev$lev.num), .info.set.move.ind.start = min(.info.set.move.ind),.move.vals = list(unique(.val))) %>% 
+			ungroup()
 	})
 	tg$ise.df = bind_rows(li)
 	invisible(tg)

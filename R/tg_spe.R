@@ -8,7 +8,7 @@ examples.make.tg.spe = function() {
 	
 	gameId = "LureOfAuthorityReduced"
 	gameId = "CournotSmall"
-	gameId = "UltimatumGame"
+	gameId = "UltimatumGameSmall"
 	
 	tg = get.tg(gameId=gameId, never.load=TRUE)
 	make.tg.spo.li(tg)
@@ -64,8 +64,10 @@ make.sg.spi = function(.sg.ind=1,tg, include.descendants=FALSE) {
   } else {
   	.info.set.inds = tg$sgi.df$.info.set.ind[tg$sgi.df$.sg.ind==.sg.ind & tg$sgi.df$.in.descendant==FALSE]
   }
-  
-	spi = tg$ise.df %>% ungroup() %>%
+
+
+	spi = tg$ise.df %>%
+		filter(.info.set.ind %in% .info.set.inds) %>%
 		select(.player, .lev.num, .info.set.ind, .var, .num.moves) %>%
 		rename(moves = .num.moves)
 	
@@ -444,7 +446,7 @@ tg.spe.li.to.eq.li = function(spe.li,tg, .sg.ind=1) {
 
 
 recursive.speq.to.ceq = function(ceq, speq, .sg.ind, tg, spe.li=tg$spe.li) {
-	restore.point("recursive.speq.to.ceq")
+	#restore.point("recursive.speq.to.ceq")
 	
 	spi = tg$spi.li[[.sg.ind]]
 	cat("\n.sg.ind = ", .sg.ind, " NROW(ceq) = ",NROW(ceq))
@@ -472,7 +474,7 @@ recursive.speq.to.ceq = function(ceq, speq, .sg.ind, tg, spe.li=tg$spe.li) {
 	# equilibria associated with a
 	# child outcome
 
-	restore.point("recursive.speq.to.ceq.2")
+	#restore.point("recursive.speq.to.ceq.2")
 	# loop through all child.sg
 	i = 1
 	for (i in seq_along(child.sg)) {
@@ -484,7 +486,7 @@ recursive.speq.to.ceq = function(ceq, speq, .sg.ind, tg, spe.li=tg$spe.li) {
 		# loop through all subgame equilibria
 		# of the current child subgame
 		ceq.li = lapply(seq_len(NROW(cdf)), function(row) {
-			restore.point("recursive.speq.to.ceq.3")
+			#restore.point("recursive.speq.to.ceq.3")
 			speq = cdf[row,]
 			recursive.speq.to.ceq(speq=speq,ceq = ceq,.sg.ind = child.sg[i],tg = tg, spe.li=spe.li)
 			
