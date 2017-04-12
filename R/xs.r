@@ -332,11 +332,11 @@ xs.game.ui = function(gameId, xs = app$xs, app=getApp()) {
   checkBtnId = paste0("checkBtn_",gameId)
   js = paste0('xecon.initGame("',gameId,'",',json,')')
   ui = tagList(
-    actionButton(btnId,"Save"),
-    actionButton(checkBtnId,"Check"),
-    actionButton(ns("otreeBtn"),"To OTree"),
-    actionButton(ns("eqBtn"),"Equilibria"),
-    actionButton(ns("gambitBtn"),"To Gambit"),
+    smallButton(btnId,"Save"),
+    smallButton(checkBtnId,"Check"),
+    smallButton(ns("otreeBtn"),"To OTree"),
+    smallButton(ns("eqBtn"),"Equilibria"),
+    smallButton(ns("runBtn"),"Run"),
     uiOutput(ns("msg")),
   	# varpar table
 		#HTML(paste0('<div id="',varparId,'"></div>')),
@@ -354,7 +354,7 @@ xs.game.ui = function(gameId, xs = app$xs, app=getApp()) {
   })
   buttonHandler(ns("otreeBtn"),gameId=gameId,xs.to.otree.click)
   buttonHandler(ns("eqBtn"),gameId=gameId,xs.eq.click)
-  buttonHandler(ns("gambitBtn"),gameId=gameId,xs.to.gambit.click)
+  buttonHandler(ns("runBtn"),gameId=gameId,xs.run.click)
   
   eventHandler("parseGameEvent","parseGameEvent",function(mode,...) {
     args = list(...)
@@ -378,25 +378,12 @@ xs.eq.click = function(gameId,...,xs=app$xs, app=getApp()) {
 }
 
 
-xs.to.gambit.click = function(gameId,...,xs=app$xs, app=getApp()) {
-  restore.point("xs.to.gambit.click")
-  ns = NS(gameId)
-  
-	jg = get.jg(gameId)
-	
-	timedMessage(ns("msg"),paste0("Create Gambit extensive form games..."),millis=Inf)
-	
-	rg = get.rg(jg=jg)
-	variants = rg$variants
-  
-	for (variant in variants) {
-		timedMessage(ns("msg"),paste0("Create Gambit extensive form game for variant ", variant, "..."),millis=Inf)
-		
-		tg = get.tg(variant = variant, rg = rg)
-		tg.to.efg(tg=tg, path=xs$games.dir)
-	}
-  
+xs.run.click = function(gameId,...,xs=app$xs, app=getApp()) {
+  restore.point("xs.run.click")
+	cat("\nxs.run.click called!\n")
+	xs.show.run.tab(gameId=gameId)
 }
+
 
 
 xs.to.otree.click = function(gameId,...,xs=app$xs, app=getApp()) {

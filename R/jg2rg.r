@@ -41,6 +41,16 @@ jg.to.rg = function(jg) {
 parse.jg.stages = function(rg, jg, kel=rg$kel) {
   restore.point("parse.jg.stages")
   rg$stages = jg.rparse.formulas(jg$stages,key = "stages",kel = kel)
+  rg$stages = lapply(rg$stages, function(stage) {
+  	if (length(stage$actions)>0)
+  		names(stage$actions) = get.names(stage$actions)
+  	if (length(stage$nature)>0)
+  		names(stage$nature) = get.names(stage$nature)
+  	if (length(stage$compute)>0)
+  		names(stage$compute) = get.names(stage$compute)
+  	stage
+  })
+  
 }
 
 

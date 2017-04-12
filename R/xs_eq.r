@@ -43,7 +43,7 @@ xs.eq.ui = function(gameId, xs = app$xs, app=getApp()) {
 		"All pure SPE (Gambit)"="spe",
 		"All pure SPE (internal)"="spe_xs",
 		"Just Gametree"="gametree",
-		"All pure NE"="ne",
+		"All pure NE (Gambit)"="ne",
 		"All NE (including mixed)"="ne_am",
 		"Some SPE (logit)"="spe_sm_logit",
 		"Some SPE (lcp)"="spe_sm_lcp",
@@ -72,6 +72,7 @@ xs.eq.ui = function(gameId, xs = app$xs, app=getApp()) {
 		selectInput(ns("solvemode"),label="Solve for",choices = xeq$solve.modes),
 		HTML("</td></tr></table>"),
 		smallButton(ns("solveBtn"),"Solve", "data-form-selector"=form.sel),
+		#smallButton(ns("efgBtn"),"Downloa", "data-form-selector"=form.sel),
     uiOutput(ns("tgmsg")),
 		br(),
 		uiOutput(ns("tginfo")),
@@ -166,6 +167,8 @@ xeq.solve = function(xeq, formValues,clear=TRUE,  never.load=TRUE) {
 					eqo$.id = rep(id,NROW(eqo))
 					eqo = select(eqo, .id, everything())
 					xeq$eqo.li[[id]] = eqo
+				} else {
+					tg.to.efg(tg=tg, path=get.games.dir())
 				}
 			}
 		}

@@ -12,6 +12,7 @@ rg.to.vg = function(rg, variant=1) {
   vg$gameId = rg$gameId
   if (is.numeric(variant)) variant = rg$variants[variant]
   vg$variant = variant
+  vg$vg.id = paste0(vg$gameId,"_",vg$variant)
   vg$params = as.list(rg$varpar[variant,,drop=FALSE])
   vg$stages = rg$stages
   vg = extract.vg.vars.info(vg=vg)
