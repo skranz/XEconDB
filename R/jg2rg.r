@@ -50,7 +50,8 @@ parse.jg.stages = function(rg, jg, kel=rg$kel) {
   		names(stage$compute) = get.names(stage$compute)
   	stage
   })
-  
+  names(rg$stages) = get.names(rg$stages)
+  invisible(rg$stages)
 }
 
 

@@ -33,7 +33,7 @@ xs.run.panel.ui = function(gameId, xs=app$xs, app=getApp()) {
 	
 	ns = NS(paste0("run-",gameId))
 	
-	xm = as.environment(list(gameId=gameId, ns=ns))
+	xm = as.environment(list(gameId=gameId, ns=ns, act.stage=0))
 	xs$xm = xm
 	
 	rg = get.rg(gameId=gameId)
@@ -43,14 +43,39 @@ xs.run.panel.ui = function(gameId, xs=app$xs, app=getApp()) {
   form.sel = ids2sel(c(ns("variant"))) 
   ui = list(
     selectInput(ns("variant"),"Variant:",choices = variants, selected=variant),
-    smallButton(ns("newMatchBtn"), "New Match...",  "data-form-selector"=form.sel),
+    smallButton(ns("newMatchBtn"), "Start",  "data-form-selector"=form.sel),
+    smallButton(ns("refreshPageBtn"), "Refresh",  "data-form-selector"=form.sel),
+    smallButton(ns("editPageBtn"), "Edit Page",  "data-form-selector"=form.sel),
   	uiOutput(ns("runUI"))
   )
   buttonHandler(ns("newMatchBtn"), xs.new.match.click)
+  buttonHandler(ns("refreshPageBtn"), xs.refresh.match.page.click)
+  buttonHandler(ns("editPageBtn"), xs.edit.page.click)
   
   ui
 
 }
+
+xs.edit.page.click = function(...) {
+	restore.point("xs.edit.page.click")
+	xm = get.xm()
+	if (!isTRUE(xm$act.stage>0)) return()
+	xs.show.edit.page.tab(gameId=xm$gameId, stage=xm$stage)
+	
+}
+
+
+xs.refresh.match.page.click = function(formValues,..., xs=app$xs, app=getApp()) {
+	restore.point("xs.refresh.match.page.click")
+	xm = get.xm()
+	
+	if (!isTRUE(xm$act.stage>0)) return()
+	
+	for (player in seq_len(xm$vg$params$numPlayers)) {
+		xs.set.stage.ui(stage=xm$act.stage,player = player,xm=xm)
+	}
+}
+
 
 xs.new.match.click = function(formValues,..., xs=app$xs, app=getApp()) {
 	restore.point("xs.new.match.click")
@@ -79,7 +104,7 @@ new.xm = function(gameId, variant=NULL, xs, app=getApp()) {
 	
 	xm$act.stage = 0
   xm$is.waiting = rep(TRUE,n)
-
+	
  
   panel.li = lapply(seq_len(n), function(i) {
     tabPanel(title=paste0("Player ",i), value=paste0("tabPlayer",i), 
@@ -95,6 +120,7 @@ xs.run.next.stages = function(xm=get.xm()) {
   restore.point("xm.run.next.stages")
   #stop("jfjdf")
   vg = xm$vg
+  n = vg$params$numPlayers
   
   if (xm$act.stage == length(vg$stages)) {
     return(finish.game(xm))
@@ -120,6 +146,7 @@ xs.run.next.stages = function(xm=get.xm()) {
     players = eval.or.return(stage$player,xm$values)
     if (identical(players,"")) players = NULL
     i = 1
+    xm$is.waiting = !seq_len(n) %in% players
     for (i in players) {
       xs.set.stage.ui(stage = stage,player = i,xm = xm) 
     }
@@ -145,7 +172,7 @@ xs.run.stage.computations = function(stage, xm) {
 	for (rv in stage$nature) {
 		var = rv$name
 		set = eval.or.return(rv$set, xm$values)
-		prob = eval.or.return(rv$prob)
+		prob = eval.or.return(rv$prob, xm$values)
 		if (nchar(prob)==0) prob=NULL
 		val = sample(set,1,prob=prob)
 		
@@ -164,8 +191,16 @@ xs.run.stage.computations = function(stage, xm) {
 
 xs.set.stage.ui = function(stage, player=1, xm) {
   restore.point("set.stage.ui")
+	if (is.numeric(stage) | is.character(stage)) {
+		stage = xm$vg$stages[[stage]]
+	}
+	
   id = xm$ns(paste0("uiPlayer",player))
-  stage.ui = try(xs.make.stage.ui(stage,player,xm))
+  if (!xm$is.waiting[player]) {
+  	stage.ui = try(xs.make.stage.ui(stage,player,xm))
+  } else {
+  	stage.ui = try(wait.ui(xm))
+  }
   if (is(stage.ui, "try-error")) {
   	stage.ui = HTML(paste0("An error occured when parsing the page for stage ", stage$name,":<br><br>", as.character(stage.ui)))
   }
@@ -176,7 +211,7 @@ xs.set.stage.ui = function(stage, player=1, xm) {
 xs.make.stage.ui = function(stage, player, xm) {
 	restore.point("xm.make.stage.ui")
 	vg = xm$vg
-	page = load.vg.stage.page(stage, vg=vg)
+	page = load.rg.stage.page(stage, rg=vg)
 	
 	xm$page.values = c(xm$values, list(.player = player))
 	xm$player = player
@@ -195,7 +230,7 @@ wait.ui = function(...) {
 xs.submit.btn.click = function(formValues, player, stage.name,action.ids, ..., xm=get.xm()) {
 	restore.point("xs.submit.btn.click")
 	cat("\nsubmit.btn.clicked!\n")
-	avals = formValues[action.ids]
+	avals = lapply(formValues[action.ids], convert.atom)
 	xm$values[names(action.ids)] = avals
 	xs.run.next.stages()
 }

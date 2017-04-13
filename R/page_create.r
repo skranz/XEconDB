@@ -2,15 +2,15 @@ examples.make.pages = function() {
 	setwd("D:/libraries/XEconDB/projects/UltimatumGame")
 	gameId = "UltimatumGame"
 	
-	vg = get.vg(gameId=gameId, always.new=TRUE)
-	make.vg.pages(vg)
-	make.stage.page(stage = 2,vg=vg)
+	rg = get.rg(gameId=gameId, always.new=TRUE)
+	make.rg.pages(rg)
+	make.stage.page(stage = 2,rg=rg)
 }
 
-load.vg.stage.page = function(stage, vg,  pages.dir = file.path(get.project.dir(),"pages", vg$vg.id), file=NULL, make.if.missing = TRUE, remake.auto = TRUE) {
-	restore.point("load.vg.stage.page")
+load.rg.stage.page = function(stage, rg,  pages.dir = file.path(get.project.dir(),"pages", rg$gameId), file=NULL, make.if.missing = TRUE, remake.auto = TRUE) {
+	restore.point("load.rg.stage.page")
 	if (is.numeric(stage) | is.character(stage)) {
-		stage = vg$stages[[stage]]
+		stage = rg$stages[[stage]]
 	}
 	if (is.null(file)) {
 		file = paste0(stage$name,".Rmd")
@@ -21,9 +21,9 @@ load.vg.stage.page = function(stage, vg,  pages.dir = file.path(get.project.dir(
 	
 	if (!file.exists(file.path(pages.dir,file))) {
 		if (make.if.missing) {
-			page = make.stage.page(stage=stage, vg=vg)
+			page = make.stage.page(stage=stage, rg=rg)
 		} else {
-			stop(paste0("Page for stage ", stage$name, " for game ", vg$gameId, " does not exist in folder ", pages.dir))
+			stop(paste0("Page for stage ", stage$name, " for game ", rg$gameId, " does not exist in folder ", pages.dir))
 		}
 	} else {
 		page = readLines(file.path(pages.dir,file))
@@ -31,16 +31,16 @@ load.vg.stage.page = function(stage, vg,  pages.dir = file.path(get.project.dir(
 	return(merge.lines(page))
 }
 
-make.vg.pages = function(vg) {
-	for (stage in vg$stages) {
-		make.stage.page(stage=stage, vg=vg)
+make.rg.pages = function(rg) {
+	for (stage in rg$stages) {
+		make.stage.page(stage=stage, rg=rg)
 	}
 }
 
-make.stage.page = function(stage=vg$stages[[1]], vg, pages.dir = file.path(get.project.dir(),"pages", vg$vg.id), file = NULL, lang="en") {
+make.stage.page = function(stage=rg$stages[[1]], rg, pages.dir = file.path(get.project.dir(),"pages", rg$gameId), file = NULL, lang="en") {
 	restore.point("make.stage.page")
 	
-	if (is.numeric(stage)) stage = vg$stages[[stage]]
+	if (is.numeric(stage)) stage = rg$stages[[stage]]
 	
 	if (is.null(file)) {
 		file = paste0(stage$name,".auto.Rmd")
@@ -94,5 +94,18 @@ make.stage.page = function(stage=vg$stages[[1]], vg, pages.dir = file.path(get.p
 	writeLines(txt, file.path(pages.dir,file))
 	
 	invisible(sep.lines(txt))
+	
+}
+
+save.stage.page = function(txt,gameId, stage.name, pages.dir = file.path(get.project.dir(),"pages", gameId), file = NULL, auto=FALSE) {
+	restore.point("save.stage.page")
+	if (is.null(file)) {
+		file = paste0(stage.name, ifelse(auto,".auto",""), ".Rmd")
+	}
+	if (!dir.exists(pages.dir))
+		try(dir.create(pages.dir, recursive = TRUE))
+	
+	writeLines(txt, file.path(pages.dir,file))
+	
 	
 }

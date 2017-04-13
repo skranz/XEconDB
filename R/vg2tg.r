@@ -635,7 +635,7 @@ add.var.to.know.mat = function(know.mat, var, value=FALSE) {
 }
 
 eval.or.return = function(call,...) {
-  if (!is(call,"call") & !is(call,"expression")) return(call)
+  if (!is(call,"name") & !is(call,"call") & !is(call,"expression")) return(call)
   eval(call,...)
 }
 
