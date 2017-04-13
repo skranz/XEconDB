@@ -216,10 +216,13 @@ xs.make.stage.ui = function(stage, player, xm) {
 	xm$page.values = c(xm$values, list(.player = player))
 	xm$player = player
 	xm$stage = stage
-	txt = replace.whiskers(page,values = xm$page.values)
 	
-	html = md2html(txt)
-	HTML(html)
+	cr = compile.rmd(text=page, out.type = "shiny")
+	
+  ui = render.compiled.rmd(cr,envir=xm$page.values,use.commonmark=FALSE)
+	#txt = replace.whiskers(page,values = xm$page.values)
+	#html = md2html(txt)
+	ui
 }
 
 wait.ui = function(...) {
