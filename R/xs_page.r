@@ -67,7 +67,11 @@ xs.edit.page.stage.change = function(gameId, stage.name, value,..., app=getApp()
 
 }
 
-save.page.click = function(gameId, stage.name, formValues,...) {
+save.page.click = function(gameId, stage.name, formValues,...,xs=app$xs, app=getApp()) {
+	if (isTRUE(xs$demo.mode)) {
+		demo.mode.alert(); return();
+	}
+
 	ns = NS(paste0(gameId,"-",stage.name))
 	txt = formValues[[ns("ace")]]
 	restore.point("save.page.click")

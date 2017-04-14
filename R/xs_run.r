@@ -272,7 +272,7 @@ actionField = function(name,label=NULL,choiceLabels=NULL, inputType="auto",xm=ge
       inputType="selectize"
     }
 	}
-  inputType = "selectize"
+  #inputType = "selectize"
   
   if (!is.null(choiceLabels)) {
     choices = as.list(choices)

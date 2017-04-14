@@ -5,13 +5,13 @@ xecon.glob = new.env()
 examples.xsApp = function() {
 	restore.point.options(display.restore.point = TRUE)
   projects.dir = "D:/libraries/XEconDB/projects"
-  app = xsApp(projects.dir, never.load.tg=FALSE)
+  app = xsApp(projects.dir, never.load.tg=FALSE, demo.mode = FALSE)
   viewApp(app)
   viewApp(app,launch.browser = TRUE)
 }
 
 
-xsApp = function(projects.dir, project=1, otree.dir=NULL, otree.url="http://localhost:8000", never.load.tg = FALSE) {
+xsApp = function(projects.dir, project=1, otree.dir=NULL, otree.url="http://localhost:8000", never.load.tg = FALSE, demo.mode=FALSE) {
   restore.point("xsApp")
   
   library(shinyEventsUI)
@@ -25,6 +25,7 @@ xsApp = function(projects.dir, project=1, otree.dir=NULL, otree.url="http://loca
   xs$otree.dir = otree.dir
   xs$otree.url = otree.url
   xs$never.load.tg = never.load.tg
+  xs$demo.mode = demo.mode
   
   setwd(projects.dir)
   
@@ -243,6 +244,10 @@ xs.update.project.tree = function(xs=app$xs, app=getApp()) {
 
 xs.delete.game = function(gameId, xs = app$xs, app=getApp()) {
   restore.point("xs.delete.game")
+	if (isTRUE(xs$demo.mode)) {
+		demo.mode.alert(); return();
+	}
+	
   xs$gamesId = setdiff(xs$gamesId, gameId)
 
   file = file.path(xs$games.dir,paste0(gameId,".json"))
@@ -254,6 +259,9 @@ xs.delete.game = function(gameId, xs = app$xs, app=getApp()) {
 
 xs.new.game = function(gameId="NewGame", xs=app$xs, app=getApp(), json=NULL) {
   restore.point("xs.new.game")
+	if (isTRUE(xs$demo.mode)) {
+		demo.mode.alert(); return();
+	}
   
   if (is.null(json))
     json = empty.jg.json(gameId)
@@ -269,6 +277,9 @@ xs.new.game = function(gameId="NewGame", xs=app$xs, app=getApp(), json=NULL) {
 xs.duplicate.game = function(gameId, xs=app$xs, app=getApp()) {
 	restore.point("xs.duplicate.game")
 	cat("\nduplicate game", gameId,"\n")
+	if (isTRUE(xs$demo.mode)) {
+		demo.mode.alert(); return();
+	}
 	
 	index=2
 	while((newId <- paste0(gameId,index)) %in% xs$gamesId) index = index+1
@@ -389,6 +400,11 @@ xs.run.click = function(gameId,...,xs=app$xs, app=getApp()) {
 
 xs.to.otree.click = function(gameId,...,xs=app$xs, app=getApp()) {
   restore.point("xs.to.otree.click")
+	if (isTRUE(xs$demo.mode)) {
+		demo.mode.alert(); return();
+	}
+	
+	
   ns = NS(gameId)
   jg = get.jg(gameId)
   timedMessage(ns("msg"),"Export to otree...", millis = Inf)
@@ -412,6 +428,10 @@ xs.to.otree.click = function(gameId,...,xs=app$xs, app=getApp()) {
 
 xs.save.game.click = function(json, value, gameId,...,xs=app$xs, app=getApp()) {
   restore.point("xs.save.game.click")
+	if (isTRUE(xs$demo.mode)) {
+		demo.mode.alert(); return();
+	}
+	
   ns = NS(gameId)
   cat("\nsave game...")
   li = fromJSON(json)
@@ -558,4 +578,13 @@ empty.jg.json = function(gameId) {
     ]
 }}
   ')
+}
+
+
+demo.mode.alert = function(title="Action not feasible in gtree demo mode", msg='<p>This action cannot be performed since gtree runs in demo mode on this public server.</p>
+<p>For unrestricted usage please visit the gtree Github page<br><br> 
+<a target ="_blank" href="https://github.com/skranz/gtree">https://github.com/skranz/gtree</a>
+<br><br>
+and follow the installation instructions to install your own local version of gtree.') {
+	showModal(modalDialog(HTML(msg),title=title,easyClose = TRUE))
 }
