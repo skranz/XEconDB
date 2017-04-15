@@ -3,7 +3,8 @@
 xecon.glob = new.env()
 
 examples.xsApp = function() {
-	restore.point.options(display.restore.point = TRUE)
+	restore.point.options(display.restore.point = !TRUE)
+	set.storing(TRUE)
   projects.dir = "D:/libraries/XEconDB/projects"
   app = xsApp(projects.dir, never.load.tg=FALSE, demo.mode = FALSE)
   viewApp(app)

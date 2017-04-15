@@ -32,13 +32,14 @@ extract.vg.vars.info = function(vg, kel=vg$kel) {
   })))
   
   # all variables and paramaters
-  vars = unique(c(names(vg$params), svars))
+  vars = unique(c(names(vg$params), svars,vg$variant))
   n = length(vars)
   
   # a list with values
   vals = lapply(1:n, function(i) NA)
   names(vals) = vars
   vals[names(vg$params)] = vg$params
+  vals$variant = vg$variant
   
   classes = sapply(1:n, function(i) "NA")
   names(classes) = vars

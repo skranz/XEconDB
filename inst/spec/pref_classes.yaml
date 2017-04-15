@@ -20,10 +20,10 @@ ineqAv:
 	params:
 		alpha:
 			descr: 'the degree of envy'
-			default: 1
+			default: 0.77
 		beta:
 			descr: 'the degree of guilt'
-			default: 0.5
+			default: 0.43
 	fun: ineqAvUtil
 
 lossAv:

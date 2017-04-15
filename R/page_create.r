@@ -47,7 +47,7 @@ make.stage.page = function(stage=rg$stages[[1]], rg, pages.dir = file.path(get.p
 	}
 	
 	head.txt = paste0(
-'<h2>', stage$name,'</h2>		
+'<h3>', stage$name,'</h3>		
 <h4>Player: {{.player}}</h4>'		
 	)
 	
@@ -80,7 +80,7 @@ make.stage.page = function(stage=rg$stages[[1]], rg, pages.dir = file.path(get.p
 '{{actionField(name="',action$name,'", label="',label,'", choiceLabels = ', clc,")}}") 
 		})
 		
-		action.txt = paste0("\n\n<h3>Your actions</h3>\n",paste0(action.txt, collapse="\n<br>\n"))
+		action.txt = paste0("\n",paste0(action.txt, collapse="\n<br>\n"))
 	} else {
 		action.txt = ""
 	}

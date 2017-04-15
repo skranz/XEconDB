@@ -201,11 +201,22 @@ xs.set.stage.ui = function(stage, player=1, xm) {
   } else {
   	stage.ui = try(wait.ui(xm))
   }
+  
+  
   if (is(stage.ui, "try-error")) {
   	stage.ui = HTML(paste0("An error occured when parsing the page for stage ", stage$name,":<br><br>", as.character(stage.ui)))
   }
+  ui = tagList(
+  	
+  )
+  
   setUI(id,stage.ui)  
  	dsetUI(id,stage.ui)  
+}
+
+get.page.ns = function(stage.name, player) {
+	NS(paste0("page-",stage.name,"-",player))
+	
 }
 
 xs.make.stage.ui = function(stage, player, xm) {
@@ -216,6 +227,7 @@ xs.make.stage.ui = function(stage, player, xm) {
 	xm$page.values = c(xm$values, list(.player = player))
 	xm$player = player
 	xm$stage = stage
+	
 	
 	cr = compile.rmd(text=page, out.type = "shiny")
 	
@@ -233,21 +245,39 @@ wait.ui = function(...) {
 xs.submit.btn.click = function(formValues, player, stage.name,action.ids, ..., xm=get.xm()) {
 	restore.point("xs.submit.btn.click")
 	cat("\nsubmit.btn.clicked!\n")
+	for (id in action.ids) {
+		if (isTRUE(length(formValues[[id]])==0) |  isTRUE(formValues[[id]]=="")) {
+			errorMessage(get.page.ns(stage.name = stage.name,player=player)("msg"),"Please make all required choices, before you continue.")
+			return()
+		}
+	}
+	
 	avals = lapply(formValues[action.ids], convert.atom)
+	
+	
 	xm$values[names(action.ids)] = avals
 	xs.run.next.stages()
 }
 
 submitPageBtn = function(label="Press to proceed",xm=get.xm(),...) {
 	restore.point("submitPageBtn")
-	id = paste0(xm$vg$vg.id,"-submitPageBtn-",xm$stage$name, "-",xm$player)
+	
+	ns = get.page.ns(xm$stage$name,xm$player)
+
+	id = paste0(ns("submitPageBtn"))
 	action.ids = sapply(names(xm$stage$actions),get.action.input.id, xm=xm)
 	
-	
-	sel = ids2sel(action.ids)
-	
+
 	buttonHandler(id, xs.submit.btn.click, player=xm$player, stage.name = xm$stage$name, action.ids=action.ids)
-	as.character(smallButton(id,label, `data-form-selector`=sel))
+
+	dsetUI(ns("msg"),"")
+
+	as.character(
+		tagList(
+			uiOutput(ns("msg")),
+			smallButton(id,label, form.ids = action.ids)
+		)
+	)
 }
 
 actionField = function(name,label=NULL,choiceLabels=NULL, inputType="auto",xm=get.xm(),...) {
