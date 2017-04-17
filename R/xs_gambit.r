@@ -2,12 +2,16 @@ example.gambit.solve.eq = function() {
 	# set working directory to project directory
   setwd("D:/libraries/XEconDB/projects/UltimatumGame/")
 	
-	gameId = "Cournot"
 	gameId = "MaxUltimatum"
 	gameId = "UltimatumGameSmall"
 	gameId = "RiskyChoice"
+	
+	
+	gameId = "Cournot"
 	tg = get.tg(gameId = gameId,never.load = FALSE)
 
+	
+	
 	et.mat = tg$et.mat
 	eq.li = get.eq(tg)
 	eq.li
@@ -123,24 +127,19 @@ gambit.solve.eq = function(tg, mixed=FALSE, just.spe=TRUE, efg.file=tg.efg.file.
   
   restore.point("gambit.solve.eq")
   
+	
 	# internal solver not using gambit
 	if (isTRUE(solvemode=="spe_xs")) {
 		return(solve.all.tg.spe(tg=tg, eq.dir=eq.dir,save.eq=save.eq))
 		
 	}
 	
-  if (is.null(solver)) {
-    if (!mixed) {
-      solver = "gambit-enumpure -q"     
-      if (just.spe) {
-        solver = paste0(solver," -P")
-      }
-    } else {
-      solver = "gambit-logit -q -e"
-    }
-  }
-  #solver = "gambit-enumpure -q -P -D"
-  com = paste0(gambit.dir, solver," ",file.path(efg.dir,efg.file))
+	solver = get.gambit.solver(solver=solver, mixed=mixed, just.spe=just.spe, solvemode=solvemode)
+  
+	#solver = "gambit-enumpure -q -P -D"
+  start.time = Sys.time()
+
+	com = paste0(gambit.dir, solver," ",file.path(efg.dir,efg.file))
   res  = system(com, intern=TRUE)
   status = attr(res,"status")
   if (isTRUE(status==1)) {
@@ -181,6 +180,9 @@ gambit.solve.eq = function(tg, mixed=FALSE, just.spe=TRUE, efg.file=tg.efg.file.
   eq.li = lapply(seq_along(ceq.li), function(i) {
   	ceq.to.eq.mat(ceq = ceq.li[[i]],eq.ind=i, et.ind=et.ind, tg=tg)
   })
+  
+  solve.time = Sys.time()-start.time
+  attr(eq.li,"solve.time") = solve.time
   
   if (save.eq) {
 	 eq.id = get.eq.id(tg=tg, just.spe = just.spe, mixed=mixed, solvemode=solvemode)
@@ -338,4 +340,119 @@ xs.col.order = function(df, vg, mode="vars") {
 	ord = try(do.call(order,df[,cols]))
 	if (is(ord,"try-error")) return(df[,cols])
 	df[ord,cols]
+}
+
+get.gambit.solver = function(solver=NULL, mixed=FALSE, just.spe=TRUE, solvemode=NULL) {
+	if (!is.null(solver)) {
+		return(solver)
+	}
+	
+  if (is.null(solver)) {
+    if (!mixed) {
+      solver = "gambit-enumpure -q"     
+      if (just.spe) {
+        solver = paste0(solver," -P")
+      }
+    } else {
+      solver = "gambit-logit -q -e"
+    }
+  }
+	solver
+	
+}
+
+
+gambit.output.to.eq.li = function(txt,tg) {
+  restore.point("gambit.output.to.eq.li")
+	
+  # no equilibrium found
+  if (length(txt)==0)
+    return(NULL)
+
+  # in large games, equilibria may be longer than one line
+  txt = merge.lines(txt)
+  txt = sep.lines(txt,"NE,")[-1]
+
+  
+  
+  # compact equilibirum representation
+  # One equilibrium is just a vector that first contains for each
+  # information set move the probability that it ocurs
+  # afterwards, we also have the probability of moves of nature
+  # ordered like .info.set.move.ind
+  ceq.li = lapply(strsplit(txt,",",fixed=TRUE), function(vec) as.numeric(vec))
+
+  
+  # We have to inject these probabilties in our equilibrium template
+  # tg$et.mat to generate an equilibrium data.frame eq.df
+  # eq.mat will have the same dimensions than oco.df
+  # each cell describes the probability that the particluar move
+  # takes place:
+  # (eq. prob for actions, prob for move of nature, 1 for transformations)
+  # rowSums(eq.mat) then give the probability distribution over outcomes
+  # for a given equilibrium.
+
+  # et.ind are the indices of et.mat
+  # that denote information sets
+  et.ind = which(tg$et.mat<0)
+  i = 1
+  eq.li = lapply(seq_along(ceq.li), function(i) {
+  	ceq.to.eq.mat(ceq = ceq.li[[i]],eq.ind=i, et.ind=et.ind, tg=tg)
+  })
+  
+  
+  eq.li
+
+}
+
+example.gambit.job = function() {
+	# set working directory to project directory
+  setwd("D:/libraries/XEconDB/projects/UltimatumGame/")
+	
+	gameId = "Cournot"
+	tg = get.tg(gameId = gameId,never.load = FALSE)
+
+	tg.to.efg(tg=tg)
+	
+	pid = start.gambit.job(tg=tg)
+	is_pid_running(pid)
+}
+
+#' Finds one or all mixed strategy equilibria
+start.gambit.job = function(tg, mixed=FALSE, just.spe=TRUE, efg.file=tg.efg.file.name(tg), efg.dir=get.eq.dir(), gambit.dir="", solver=NULL, eq.dir = efg.dir, solvemode=NULL, jobs.dir = file.path(get.project.dir(),"jobs"), ...) {
+  
+  restore.point("start.gambit.job")
+  
+	# internal solver not using gambit
+	if (isTRUE(solvemode=="spe_xs")) {
+		# job not yet implemented
+		stop("Asynchronious job not yet implemented for internal algorithm.")
+		#return(solve.all.tg.spe(tg=tg, eq.dir=eq.dir,save.eq=save.eq))
+		
+	}
+	
+	solver = get.gambit.solver(solver=solver, mixed=mixed, just.spe=just.spe, solvemode=solvemode)
+	
+	solver.bin = str.left.of(solver," ")
+	solver.args = str.right.of(solver," ")
+	cmd = paste0(gambit.dir, solver.bin)
+	
+	args = c(solver.args, file.path(efg.dir,efg.file))
+	
+	eq.id = get.eq.id(tg=tg, solvemode = solvemode, mixed=mixed, just.spe=just.spe)
+	
+	out.file = file.path(jobs.dir, paste0(eq.id, ".out"))
+	
+  #solver = "gambit-enumpure -q -P -D"
+  pid  = exec_background(cmd,args = args,std_out = out.file)
+	pid
+}
+
+
+is_pid_running = function(pid) {
+	res = try(exec_status(pid, wait=FALSE),silent = TRUE)
+	if (is(res,"try-error")) return(FALSE)
+	if (is.na(res)) return(TRUE)
+	return(FALSE)
+
 }

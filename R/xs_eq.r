@@ -228,42 +228,49 @@ xeq.tg.info.df = function(xeq,ids = names(xeq$tg.li),...) {
 	no.oco = lapply(ids, function(id) {
 		tg = xeq$tg.li[[id]]
 		if (is.null(tg)) return("-")
-		as.character(NROW(tg$oco.df))
+		format(NROW(tg$oco.df), big.mark=" ")
 	})
 	no.ise = lapply(ids, function(id) {
 		tg = xeq$tg.li[[id]]
 		if (is.null(tg)) return("?")
-		as.character(NROW(tg$ise.df))
+		format(NROW(tg$ise.df), big.mark=" ")
 	})
 	no.sg = lapply(ids, function(id) {
 		tg = xeq$tg.li[[id]]
 		if (is.null(tg$sg.df)) return("?")
-		as.character(NROW(tg$sg.df))
+		format(NROW(tg$sg.df), big.mark=" ")
 	})
 	no.all.sp = lapply(ids, function(id) {
 		tg = xeq$tg.li[[id]]
 		if (is.null(tg$sg.df)) return("?")
-		as.character(tg$sg.df$.num.strats[1])
+		format(tg$sg.df$.num.strats[1],big.mark = " ", scientific = 9)
 	})
 	no.sp = lapply(ids, function(id) {
 		tg = xeq$tg.li[[id]]
 		if (is.null(tg$sg.df)) return("?")
-		as.character(sum(tg$sg.df$.num.strats.without.desc))
+		format(sum(tg$sg.df$.num.strats.without.desc), big.mark=" ",scientific = 9)
 	})
 
 	no.eq = lapply(ids, function(id) {
 		eq.li = xeq$eq.li[[id]]
 		if (is.null(eq.li)) return("?")
-		as.character(length(eq.li))
+		format(length(eq.li), big.mark=" ")
 	})
 	
 	no.eqo = lapply(ids, function(id) {
 		eqo.df = xeq$eqo.li[[id]]
 		if (is.null(eqo.df)) return("?")
-		as.character(NROW(eqo.df))
+		format(NROW(eqo.df), big.mark=" ")
 	})
 
-	mat = matrix(nrow=8, byrow = TRUE,c(
+	solve.time = lapply(ids, function(id) {
+		eq.li = xeq$eq.li[[id]]
+		solve.time = attr(eq.li,"solve.time")
+		if (is.null(solve.time)) return("?")
+		format(solve.time,digits=3)
+	})
+	
+	mat = matrix(nrow=9, byrow = TRUE,c(
 		"Outcomes",no.oco,
 		"Info sets", no.ise,
 		"Subgames", no.sg,
@@ -271,7 +278,8 @@ xeq.tg.info.df = function(xeq,ids = names(xeq$tg.li),...) {
 		"...normal-form",no.all.sp,
 		"...backward-induction", no.sp,
 		"Pure SPE", no.eq,
-		"Pure SPE outcomes", no.eqo
+		"Pure SPE outcomes", no.eqo,
+		"Solve time", solve.time
 	))
 	colnames(mat) = c(".",ids)
 	as.data.frame(mat)

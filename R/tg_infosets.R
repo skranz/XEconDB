@@ -1,15 +1,11 @@
 examples.make.tg.iso.df = function() {
   setwd("D:/libraries/XEconDB/projects/UltimatumGame")
 	tg = get.tg(gameId="BunchedUltimatum", never.load=TRUE)
-	tg = get.tg(gameId="TwoChoices",never.load = TRUE)
+	tg = get.tg(gameId="GiftEff",variant=1,never.load = TRUE)
 	set.tg.util(tg)
 	#make.tg.iso.df(tg)
 	make.tg.ise.df(tg)
 	ise.df = tg$ise.df
-	iso.df = tg$iso.df
-	lev1 = tg$lev.li[[1]]$lev.df
-	#lev3 = tg$lev.li[[3]]$lev.df
-	
 	compute.tg.subgames(tg)
 	sg.df = tg$sg.df
 	sgi.df = tg$sgi.df
@@ -167,8 +163,8 @@ compute.tg.subgames = function(tg) {
 	lev.num = rev(tg$action.levels)[1] 
 	
 	ise.df = tg$ise.df
-	# On the last level all singleton information sets are subgames
 	
+	# On the last level all singleton information sets are subgames
 	rows = which(ise.df$.lev.num == lev.num & ise.df$.num.nodes == 1)
 	
 	if (length(rows)>0) {
@@ -184,7 +180,7 @@ compute.tg.subgames = function(tg) {
 	# to do for earlier levels
 	# good vectorized method to find all descendant information sets
 	
-	lev.num = 1
+	lev.num = 2
 	li = lapply(rev(tg$action.levels)[-1], function(lev.num) {
 		restore.point("compute.subgame.inner")
 		lev = tg$lev.li[[lev.num]]
@@ -199,6 +195,23 @@ compute.tg.subgames = function(tg) {
 	sgi.df = bind_rows(c(list(sgi.df1),li)) %>%
 		arrange(.root.info.set.ind, .info.set.ind) %>%
 		ungroup()
+	
+
+	# if first subgame does not contain all
+	# information set, we need to add the
+	# super subgame (whole game)
+	if (NROW(sgi.df)>0) {
+		size1 = sum(sgi.df$.root.info.set.ind == sgi.df$.root.info.set.ind[1]) 
+	} else {
+		size1  = 0
+	}
+	# add super subgame
+	if (size1<NROW(ise.df)) {
+		super.df = data_frame(.lev.num = 0,.root.info.set.ind=0, .info.set.ind = ise.df$.info.set.ind)
+		sgi.df = rbind(super.df, sgi.df)
+	}
+	
+	
 	
 	# generate a subgame index
 	# subgames starting at earlier information nodes
@@ -220,7 +233,7 @@ compute.tg.subgames = function(tg) {
 	
 	sg.df = df %>%
 		group_by(.sg.ind,.lev.num, .root.info.set.ind) %>%
-		summarize(.num.strats.without.desc = prod(ifelse(.in.descendant,1,.num.moves)), .num.strats = prod(.num.moves), .num.players=length(unique(.player)))
+		summarize(num.direct.info.sets = sum(!.in.descendant), .num.strats.without.desc = prod(ifelse(.in.descendant,1,.num.moves))*(num.direct.info.sets>0), .num.strats = prod(.num.moves), .num.players=length(unique(.player)))
 
 	max.or.na = function(x) {
 		if (length(x)==0) return(NA)
@@ -245,7 +258,7 @@ compute.tg.subgames = function(tg) {
 # find for each info set in the level 
 # all descendant info sets (all nodes must be descendants)
 # uses know.var.groups for vectorization
-find.lev.descendant.info.sets = function(lev, tg, singleton.only=FALSE, add.roots = FALSE) {
+find.lev.descendant.info.sets = function(lev, tg, subgames.only=TRUE, add.roots = FALSE) {
 	restore.point("find.lev.descendant.info.sets")
 	
 	lev.df = lev$lev.df
@@ -257,10 +270,10 @@ find.lev.descendant.info.sets = function(lev, tg, singleton.only=FALSE, add.root
 		
 		.info.set.inds = lev.df$.info.set.ind[lev.rows]
 		
-		# may only consider information sets that are singleton
+		# may only consider information sets that are singletons
 		# since only those can start subgames
-		if (singleton.only) {
-			singleton = tg$ise.df$.num.nodes[info.set.inds] == 1
+		if (subgames.only) {
+			singleton = tg$ise.df$.num.nodes[.info.set.inds] == 1
 			.info.set.inds = .info.set.inds[singleton]
 			lev.rows = lev.rows[singleton]
 		}
@@ -290,8 +303,10 @@ find.lev.descendant.info.sets = function(lev, tg, singleton.only=FALSE, add.root
 			# lev.rows in lev.df
 			dlev.df$.match = match(dcols.id, cols.id)
 			
-			# try to find those information sets that are fully contained
-			# this means dind must be the same for all moves and
+			# try to find those information sets 
+			# that are fully contained
+			# this means dind must be the same
+			# for all moves and
 			# cannot contain any NA
 			dlev.df = dlev.df %>%
 				group_by(.info.set.ind) %>%
@@ -302,13 +317,14 @@ find.lev.descendant.info.sets = function(lev, tg, singleton.only=FALSE, add.root
 			# indices of the parent info set and the
 			# descendant info sets
 			match.df = dlev.df %>%
-				filter(.contained, .move.ind==1) %>%
+				#filter(.contained, .move.ind==1) %>%
 				mutate(pinfo.set.ind = .info.set.inds[.match]) %>%
-				select(pinfo.set.ind, .info.set.ind) %>%
+				select(pinfo.set.ind, .info.set.ind, .contained) %>%
 				unique()
 			
+
 			if (add.roots) {
-				match.df = rbind(data_frame(pinfo.set.ind=.info.set.inds, .info.set.ind = .info.set.inds),match.df) %>%
+				match.df = rbind(data_frame(pinfo.set.ind=.info.set.inds, .info.set.ind = .info.set.inds, .contained=TRUE),match.df) %>%
 					arrange(pinfo.set.ind, .info.set.ind)
 			}
 			
@@ -317,7 +333,17 @@ find.lev.descendant.info.sets = function(lev, tg, singleton.only=FALSE, add.root
 		return(bind_rows(li))
 	})
 	
-	bind_rows(li)
+	df = bind_rows(li)
+
+	df = df %>% 
+		group_by(pinfo.set.ind) %>%
+		mutate(all.contained = all(.contained))
+	
+	# remove info.sets whose nodes are not fully contained
+	if (subgames.only) {
+		df = filter(df, all.contained)
+	}
+	df
 }
 
 # compute for each subgame the possible outcomes of the subgame
@@ -333,7 +359,7 @@ compute.sg.outcomes = function(sg.df, tg, add.to.sg.df = TRUE) {
 		kvg = 1
 		li = lapply(seq_along(lev$know.var.li), function(kvg) {
 			restore.point("compute.sg.outcomes.inner2")
-			# find info sets at which subggame starts of the current know.var group
+			# find info sets at which subgame starts of the current know.var group
 			lev.rows = which(lev.df$.know.var.group == kvg & lev.df$.info.set.ind %in% sg.df$.root.info.set.ind & lev.df$.move.ind == 1)
 			if (length(lev.rows)==0) return(NULL)
 			
@@ -361,6 +387,16 @@ compute.sg.outcomes = function(sg.df, tg, add.to.sg.df = TRUE) {
 		bind_rows(li)
 	})
 	df = bind_rows(li)
+	
+	# manually add outcomes of super subgame
+	if (sg.df$.root.info.set.ind[1]==0) {
+		df0 = data_frame(.root.info.set.ind = 0, .outcomes=list(tg$oco.df$.outcome))
+		if (NROW(df)>0) {
+			df = rbind(df0, df)
+		} else {
+			df = df0
+		}
+	}
 	
 	# TO DO: .info.set.ind is so far not globally
 	# defined by counter starts at each level

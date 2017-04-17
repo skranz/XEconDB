@@ -9,6 +9,7 @@ examples.make.tg.spe = function() {
 	gameId = "LureOfAuthorityReduced"
 	gameId = "CournotSmall"
 	gameId = "BunchedUltimatum"
+	gameId = "GiftEff"
 	
 	tg = get.tg(gameId=gameId, never.load=TRUE)
 	sort(unlist(lapply(as.list(tg), object.size)),decreasing = TRUE)
@@ -80,9 +81,14 @@ make.sg.spi = function(.sg.ind=1,tg, include.descendants=FALSE) {
 # 		ungroup()
   
 	# these indexes will be used for fast computation
-	# of the spo table                          
-  spi$iso.row.add = c(0, cumsum(spi$moves[-NROW(spi)]))
-  spi$move.mult = rev(c(1,cumprod(rev(spi$moves[-1]))))
+	# of the spo table
+	if (NROW(spi)>0) {
+  	spi$iso.row.add = c(0, cumsum(spi$moves[-NROW(spi)]))
+  	spi$move.mult = rev(c(1,cumprod(rev(spi$moves[-1]))))
+	} else {
+		spi$iso.row.add = spi$move.mult = integer(0)
+		
+	}                    
   
   spi
 }
@@ -96,6 +102,10 @@ make.sg.spo.df = function(.sg.ind = 1, sg.df = tg$sg.df, sgi.df = tg$sgi.df, spi
 	sg.df = sg.df[sg.df$.sg.ind == .sg.ind,]
 	sgi.df = sgi.df[sgi.df$.sg.ind == .sg.ind,]
 	spi = tg$spi.li[[.sg.ind]]
+	
+	# a super subgame without any own
+	# information sets
+	if (NROW(spi)==0) return(NULL)
 	
 	.info.set.inds = spi$.info.set.ind
 	
@@ -249,6 +259,8 @@ get.tg.spo.li = function(tg) {
 solve.all.tg.spe = function(tg, eq.dir = get.eq.dir(), save.eq=TRUE) {
 	restore.point("solve.all.tg.spe")
 	
+	start.time = Sys.time()
+
 	if (is.null(tg[["spo.li"]])) {
 		get.tg.spo.li(tg)
 	}
@@ -262,6 +274,10 @@ solve.all.tg.spe = function(tg, eq.dir = get.eq.dir(), save.eq=TRUE) {
 		tg$spe.li[[.sg.ind]] = solve.sg.spe(.sg.ind = .sg.ind, tg=tg)	
 	}
 	tg$eq.li = tg.spe.li.to.eq.li(spe.li=tg$spe.li, tg=tg)
+	
+	solve.time = Sys.time()-start.time
+  attr(tg$eq.li,"solve.time") = solve.time
+
 	
 	if (save.eq) {
 		eq.id = get.eq.id(tg=tg,solvemode="spe_xs")
@@ -301,6 +317,10 @@ solve.sg.spe = function(.sg.ind=1, tg) {
 
 	
 	restore.point("solve.sg.spe")
+	
+	if (.sg.ind == 1 & tg$sg.df$num.direct.info.sets[[.sg.ind]]==0) {
+		return(solve.nature.super.sg(tg))
+	}
 	
 	# all children subgames
 	child.sg = get.child.subgames(.sg.ind, tg)
@@ -358,7 +378,7 @@ solve.sg.spe = function(.sg.ind=1, tg) {
 # backward induction simple works
 # by removing from spo.df all outcomes from remove.outcomes
 solve.sg.spe.given.remove = function(.sg.ind=1, tg, remove.outcomes=NULL, child.eqo.inds = NULL) {
-	restore.point("solve.sg.spe.givem.remove")
+	restore.point("solve.sg.spe.given.remove")
 	
 	spo.df = tg$spo.li[[.sg.ind]]
 	
@@ -418,6 +438,48 @@ solve.sg.spe.given.remove = function(.sg.ind=1, tg, remove.outcomes=NULL, child.
 	nlist(speq.df = speq, eqo.df)
 }
 
+
+# the largest subgame for a game that
+# starts with a move of nature
+solve.nature.super.sg = function(tg) {
+	restore.point("solve.nature.super.sg")
+
+	.sg.ind = 1
+	# all children subgames
+	child.sg = get.child.subgames(.sg.ind, tg)
+	
+	# list of equilibrium outcome indices
+	# for all child-subgames
+	eqo.li = lapply(child.sg, function(cind) {
+		tg$spe.li[[cind]]$eqo.df$.eqo.ind
+	})
+	
+	# grid of all child subgame eq. outcomes
+	eqo.grid = expand.grid(eqo.li)
+	names(eqo.grid) = child.sg
+
+	grid.row = 1
+	li = lapply(seq_len(NROW(eqo.grid)), function(grid.row) {
+		eqo.outcomes =  unique(unlist(lapply(seq_along(child.sg), function(i) {
+			cind = child.sg[i]
+			.eqo.ind = eqo.grid[grid.row,i]
+			tg$spe.li[[cind]]$eqo.df$.outcomes[[.eqo.ind]]
+		})))
+		
+		cei = as.integer(eqo.grid[grid.row,])
+		names(cei) = NULL
+		row.eqo.df = data_frame(.eqo.ind=1,.outcomes=eqo.outcomes, child.eqo.inds=list(cei))
+	})
+	eqo.df = bind_rows(li)
+	eqo.df$.eqo.ind = seq_len(NROW(eqo.df))
+	speq.df = eqo.df %>%
+		mutate(sp=NA) %>%
+		select(sp,.outcomes,.eqo.ind, child.eqo.inds)
+	
+	list(speq.df=speq.df, eqo.df=eqo.df)	
+}
+
+
 # An equilibrium when we solve a game by gambit an transform it, is specified by an eq.mat.
 # It has one row for each outcome and
 # one column for each variable that is an action or move of nature. The value is the probability that the variable takes in equilibrium the value it has in that row of oco.df.
@@ -449,15 +511,20 @@ tg.spe.li.to.eq.li = function(spe.li,tg, .sg.ind=1) {
 
 recursive.speq.to.ceq = function(ceq, speq, .sg.ind, tg, spe.li=tg$spe.li) {
 	#restore.point("recursive.speq.to.ceq")
+	cat("\n.sg.ind = ", .sg.ind, " NROW(ceq) = ",NROW(ceq))
 	
 	spi = tg$spi.li[[.sg.ind]]
-	cat("\n.sg.ind = ", .sg.ind, " NROW(ceq) = ",NROW(ceq))
-	 
-	moves.df = sp.to.moves(speq$sp, spi=spi, ise.df = tg$ise.df, wide=FALSE)
-
-	# insert a 1 for the info set moves taken
-	# in equilibrium
-	ceq[,moves.df$.info.set.move.ind] = 1
+	
+	# satisfied unless for nature super subgame
+	if (NROW(spi)>0) {
+		 
+		moves.df = sp.to.moves(speq$sp, spi=spi, ise.df = tg$ise.df, wide=FALSE)
+	
+		# insert a 1 for the info set moves taken
+		# in equilibrium
+		ceq[,moves.df$.info.set.move.ind] = 1
+		
+	}
 	
 	# all children subgames	
 	child.sg = get.child.subgames(.sg.ind, tg)
