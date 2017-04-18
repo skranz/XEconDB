@@ -257,16 +257,43 @@ start.experiment = function(exp = app$glob$exp, app=getApp()) {
 }
 
 start.es = function(es, exp=app$glob$exp, app=getApp()) {
+	restore.point("start.es")
+	
 	es$partInd = 0
-	
-	# match subjects
-	
-	# create matches xm
-	
-	# start all matches
 	
 	
 }
+
+start.es.part = function(partInd = es$partInd,es, exp=app$glob$exp, app=getApp()) {
+	
+	part = es$parts[[partInd]]
+	
+	if (!part$is.game) {
+		stop("currently only games implemented")
+	}
+	
+	vg = part$vg
+	n = vg$params$numPlayers
+	
+	# match subjects
+	
+	
+	# currently only stranger matchings
+	nm = es$numSub / n
+	
+	# draw for each subject a match index
+	match.inds = sample(rep(seq_len(nm), length.out=es$numSub),es$numSub)
+	
+	
+	
+	
+		
+	# create matches xm
+	
+	# start all matches
+}
+
+
 
 assign.subject.to.sequences = function(exp) {
 	restore.point("assign.sub.to.seq")
