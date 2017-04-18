@@ -1,6 +1,6 @@
 
 # new experiment match
-new.em = function(vg=part$vg, part=NULL, subIds=NULL, app.li = NULL, container.ids = "mainUI") {
+new.em = function(vg=vg, subIds=NULL, app.li = NULL, container.ids = "mainUI") {
 	restore.point("new.em")
 	
 	if (is.null(subIds)) {
@@ -37,7 +37,11 @@ em.make.stage.ui = function(stage, player, em) {
 	em$stage = stage
 	em$ns = NS(paste0("em-page-",stage$stage.name,"-",player))
 	
-	cr = compile.rmd(text=page, out.type = "shiny")
+	# set global em for rendered fields
+	app = getApp()
+	app$glob$em = em
+	
+	cr = compile.rmd(text=page, out.type = "shiny",envir = em$page.values)
   ui = render.compiled.rmd(cr,envir=em$page.values,use.commonmark=FALSE)
 	ui
 }
@@ -49,6 +53,7 @@ get.em.container.id = function(em, player=1) {
 }
 
 get.em.player.app = function(em, player=1) {
+	restore.point("get.em.player.ap")
 	if (is.null(em$app.li)) return(getApp())
 	pos = min(player,length(em$app.li))
 	em$app.li[[pos]]
@@ -225,9 +230,11 @@ submitPageBtn = function(label="Press to continue",em=get.em(),player=em$player,
 	action.ids = sapply(names(em$stage$actions),get.action.input.id, em=em)
 	
 
-	buttonHandler(id, em.submit.btn.click, player=em$player, stage.name = em$stage$name, action.ids=action.ids)
 
 	app = get.em.player.app(em=em, player=player)
+	
+	buttonHandler(id, em.submit.btn.click, player=em$player, stage.name = em$stage$name, action.ids=action.ids,app = app)
+	
 	dsetUI(ns("msg"),"", app=app)
 
 	as.character(
@@ -286,6 +293,8 @@ set.app.em = function(em, app=getApp()) {
 }
 
 get.em = function(...,app=getApp()) {
-	app$experiment.match
+	em = 	app$experiment.match
+	if (!is.null(em)) return(em)
+	app$glob$em
 }
 

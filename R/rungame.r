@@ -329,13 +329,6 @@ get.act.proposed.actions = function(stage,player, game) {
 }
 
 
-wait.ui = function(game) {
-  ui = fluidRow(
-    h3("Wait for the other players...")
-  )
-  ui
-}
-
 
 newMatchBtnClick = function(session,game, ...) {
   variant = isolate(session$input$variant)

@@ -8,8 +8,9 @@ examples.exp.app = function() {
 	restore.point.options(display.restore.point = TRUE)
   setwd("D:/libraries/XEconDB/projects/UltimatumGame")
   app = expApp()
-  browseURL("http://localhost:7733?key=oppushc&mode=admin")
-  #browseURL("http://localhost:7733?key=uhufhduifhe7fezfhehfuf&mode=subject")
+  browseURL("http://localhost:7733?key=s1&mode=subject")
+  browseURL("http://localhost:7733?key=s2&mode=subject")
+  browseURL("http://localhost:7733?key=admin&mode=admin")
   viewApp(app, port=7733, launch.browser = FALSE)
 	runApp
 }
@@ -38,7 +39,7 @@ expApp = function(project.dir=get.project.dir(), url="http://localhost:7733") {
   glob$subApps = list()
   
   setwd(project.dir)
-	app$ui = bootstrapPage(
+	app$ui = fluidPage(
 		aceEditorHeader(),
 		uiOutput("mainUI")
 	)  
@@ -78,7 +79,7 @@ exp.subject.connects = function(query, app=getApp()) {
 	
 	# new subject arrived
 	if (is.null(sub)) {
-		app$global$subApps[[subId]] = app
+		app$glob$subApps[[subId]] = app
 		sub = list(subId = subId, subNum = length(app$glob$subjects)+1, connected=TRUE)
 		sub$nick = paste0("subject", sub$subNum)
 		app$glob$subjects[[subId]] = sub
@@ -96,7 +97,7 @@ exp.subject.connects = function(query, app=getApp()) {
 		
 		# subject is reconnected from a disrupted
 		# connection
-		app$global$subApps[[subId]] = app
+		app$glob$subApps[[subId]] = app
 		subject.reconnected(subId=subId)
 	}
 
@@ -160,6 +161,8 @@ exp.admin.ui = function(app=getApp()) {
 		admin.init.exp(expId = value)
 	})
 	
+	buttonHandler(ns("startBtn"),start.experiment)
+	
 	ui
 }
 
@@ -167,6 +170,7 @@ admin.init.exp = function(expId, app=getApp()) {
 	restore.point("admin.init.exp")
 	
 	glob = app$glob
+	ns = app$ns
 	exp = as.environment(list(expId = expId))
 	glob$exp = exp
 	
@@ -244,7 +248,7 @@ init.exp.sequence = function(name, es, exp) {
 	es
 } 
 
-start.experiment = function(exp = app$glob$exp, app=getApp()) {
+start.experiment = function(exp = app$glob$exp, app=getApp(),...) {
 	restore.point("start.experiment")
 	
 	assign.subjects.to.sequences(exp)
@@ -259,17 +263,22 @@ start.experiment = function(exp = app$glob$exp, app=getApp()) {
 start.es = function(es, exp=app$glob$exp, app=getApp()) {
 	restore.point("start.es")
 	
-	es$partInd = 0
+	es$em.li = vector("list",es$numSub)
+	names(es$em.li) = es$subIds
 	
-	
+	start.es.part(partInd = 1, es=es)
 }
 
 start.es.part = function(partInd = es$partInd,es, exp=app$glob$exp, app=getApp()) {
+	restore.point("start.es.part")
+	
+	glob = app$glob
 	
 	part = es$parts[[partInd]]
+	es$partInd = partInd
 	
 	if (!part$is.game) {
-		stop("currently only games implemented")
+		stop("Currently only games are implemented as experiment parts.")
 	}
 	
 	vg = part$vg
@@ -277,30 +286,43 @@ start.es.part = function(partInd = es$partInd,es, exp=app$glob$exp, app=getApp()
 	
 	# match subjects
 	
-	
 	# currently only stranger matchings
+	# note that sequences should
+	# have a number of subjects that
+	# can be exactly distributed over 
+	# matches
 	nm = es$numSub / n
 	
 	# draw for each subject a match index
 	match.inds = sample(rep(seq_len(nm), length.out=es$numSub),es$numSub)
 	
-	
-	
-	
+	# create all em
+	em.ind = 1
+	for (em.ind in seq_len(nm)) {
+		subInds = which(match.inds == em.ind)
+		subIds = es$subIds[subInds]
+		app.li = glob$subApps[subIds]		
+
+		em = new.em(vg=part$vg, subIds=subIds, app.li=app.li, container.ids = "mainUI")
 		
-	# create matches xm
+		for (subId in subIds) es$em.li[[subId]] = em 
+	}
 	
 	# start all matches
+	for (em in es$em.li) {
+		em.start.match(em)
+	}
 }
 
 
 
-assign.subject.to.sequences = function(exp) {
+assign.subjects.to.sequences = function(exp, app=getApp(), glob=app$glob) {
+	
+	connected = unlist(lapply(glob$subjects, function(sub) isTRUE(sub$connected)))
+	
 	restore.point("assign.sub.to.seq")
 	
-	connected = unlist(lapply(glob$subjects, function(sub) !isTRUE(sub$connected)))
-	
-	subjects = exp$subjects[connected]
+	subjects = glob$subjects[connected]
 	n = length(subjects)
 	
 	remain = n
@@ -314,7 +336,9 @@ assign.subject.to.sequences = function(exp) {
 	# first assign subjects equally as long
 	# as maximum required size of all sequences
 	# can be assigned to all sequences
-	es.sub = rep(floor(n / (batch*n.es)),n.es)
+	num.batches = floor(n / (batch*n.es))
+	
+	es.sub = rep(num.batches*batch,n.es)
 	
 	
 	remain = n-sum(es.sub)
@@ -339,7 +363,7 @@ assign.subject.to.sequences = function(exp) {
 	start.ind = 1
 	for (i in seq_len(n.es)) {
 		end.ind = start.ind+es.sub[[i]]-1
-		sub.li[[i]] = ids[start.ind::end.ind]
+		sub.li[[i]] = ids[start.ind:end.ind]
 		start.ind = end.ind+1
 	}
 
@@ -349,7 +373,7 @@ assign.subject.to.sequences = function(exp) {
 		es$numSub = length(es$subIds)
 	}
 	exp$exp.subId = ids
-	exp$no.subId = setdiff(names(exp$subjects),ids)
+	exp$no.subId = setdiff(names(glob$subjects),ids)
 	
 }
 
