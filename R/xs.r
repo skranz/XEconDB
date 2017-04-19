@@ -78,8 +78,7 @@ xs.get.gamesId = function(xs) {
   restore.point("xs.get.gamesId")
   
   if (is.null(xs$project)) return(NULL)
-  gamesId = list.files(paste0(xs$project,"/games"), pattern=glob2rx("*.json"), full.names=FALSE)
-  gamesId = str.remove.ends(gamesId,0,5)
+  gamesId = list.dirs(paste0(xs$project,"/games"), recursive=FALSE, full.names=FALSE)
   xs$gamesId = gamesId
   gamesId
 }
@@ -115,7 +114,7 @@ xs.ui = function(app=getApp(), xs=app$xs) {
 
   cm = tagList(
   	 treeNodeContextMenu(id="cmProjGame",node.class = "projNode_games", items=list(new = list(name="New game"))),
-  	 treeNodeContextMenu(id="cmProjGame",node.class = "projNode_game", items=list(new = list(name="New game"), del=list(name="Remove game"), rename=list(name="Rename game"), duplicate = list(name="Duplicate game")
+  	 treeNodeContextMenu(id="cmProjGame",node.class = "projNode_game", items=list(new = list(name="New game"), del=list(name="Delete game"), rename=list(name="Rename game"), duplicate = list(name="Duplicate game")
   	))
   )
   
@@ -127,7 +126,7 @@ xs.ui = function(app=getApp(), xs=app$xs) {
   	cat("\ncontext menu key: ", key)
   	
   	if (key=="new" && nodeType %in% c("game","games")) {
-  	  xs.new.game()	
+  	  xs.new.game.click()	
   	} else if (key=="del" && nodeType == "game") {
   	  xs.delete.game(gameId = gameId)
   	} else if (key=="duplicate" && nodeType == "game") {
@@ -243,6 +242,81 @@ xs.update.project.tree = function(xs=app$xs, app=getApp()) {
   fancytree.update.source("projTree",tree.nodes)
 }
 
+showConfirmModal = function(ok.fun, content=HTML(msg), msg="Please confirm", ok.label="Ok", cancel.label="Cancel", title="",fade=FALSE, ns=NS(random.string(20)), cancel.fun=function(...) {removeModal()},form.ids = NULL, args=list(), ...) {
+	restore.point("showConfirmModal")
+	
+	
+	ok.id = ns("okBtn")
+	cancel.id = ns("cancelBtn")
+	
+	buttonHandler(ok.id, function(formValues,...) {
+		fun.args = c(list(formValues=formValues),args)
+		res = do.call(ok.fun,fun.args)
+  	if (identical(res,FALSE)) return()
+  	removeModal()
+  })
+  buttonHandler(cancel.id, function(...) {
+  	cancel.fun(...)
+  })
+  
+  showModal(modalDialog(fade = fade,title=title,content,...,
+  	footer = tagList(
+  		smallButton(ok.id,ok.label,form.ids = form.ids),
+  		smallButton(cancel.id,cancel.label)
+  	)
+  ))
+
+}
+
+
+showGameNameModal = function(ok.fun, default.name="", msg="Enter the new game name", title="", help.txt = "", ns=NS(random.string(10)), ...) {
+	restore.point("showGameNameModal")
+	
+	content = tagList(
+		p(msg),
+		textInput(ns("newId"),"", value=default.name),
+		uiOutput(ns("help"))
+	)
+	dsetUI(ns("help"),"")
+	new.ok.fun = function(formValues, ...) {
+		restore.point("new.ok.fun")
+		gameId = formValues[[ns("newId")]]
+		res = check.new.gameId(gameId)
+		if (!res$ok) {
+			ui = HTML(colored.html(res$msg))
+			setUI(ns("help"),ui)
+			dsetUI(ns("help"),ui)
+			return(FALSE)
+		}
+		ok.fun(gameId=gameId)
+		return(TRUE)
+	}
+	showConfirmModal(new.ok.fun,content=content, title=title, form.ids = ns("newId"))
+}
+
+check.new.gameId = function(gameId) {
+	if (length(gameId)==0) {
+		return(list(ok=FALSE, msg="You have to enter a gameId."))
+	}
+	
+	
+	if (nchar(gameId)==0) {
+		return(list(ok=FALSE,msg="You have to enter a gameId."))
+	}
+	allowed.chars = c(letters,LETTERS,0:9)
+	chars = strsplit(gameId, split="", fixed=TRUE)[[1]]
+	if (!all(chars %in% allowed.chars)) {
+		return(list(ok=FALSE, msg="Your gameId can only consist of letters and numbers. Use camel case, e.g. 'UltimatumGame', to compose words. Underscores, like in 'ultimatum_game', are not allowed because underscores are used to specify game variants."))
+		
+	}
+	
+	if (does.game.exist(gameId)) {
+		return(list(ok=FALSE, msg=paste0("A game with gameId '",gameId,"' does already exist in your project.")))
+	}
+	return(list(ok=TRUE, msg=""))
+}
+
+
 xs.delete.game = function(gameId, xs = app$xs, app=getApp()) {
   restore.point("xs.delete.game")
 	if (isTRUE(xs$demo.mode)) {
@@ -251,12 +325,53 @@ xs.delete.game = function(gameId, xs = app$xs, app=getApp()) {
 	
   xs$gamesId = setdiff(xs$gamesId, gameId)
 
-  file = file.path(xs$games.dir,paste0(gameId,".json"))
-  try(file.remove(file))
+  # remove complete game director
+  dir = file.path(xs$games.dir, gameId)
+	ok.fun = function(...){
+ 		cat("\n delete ", dir)
+		close.game.tabs(gameId)
+		try(unlink(dir, recursive=TRUE))
+		
+	} 
+  showConfirmModal(ok.fun = ok.fun,
+  	title = "Confirm Deletion",
+  	msg = paste0("Are you sure you want to delete the game ", gameId, " including all pages and computed equilibria?"),
+  	ok.label = "Delete"
+  )
+  
+  # 
+  # buttonHandler("delOkBtn", function(...) {
+  # 	cat("\n delete ", dir)
+  # 	#try(unlink(dir, recursive=TRUE))
+  # 	removeModal()
+  # })
+  # buttonHandler("cancelModalBtn", function(...) {
+  # 	removeModal()
+  # })
+  # 
+  # showModal(modalDialog(fade = FALSE,title="Confirm Deletion",tagList(
+  # 	tags$p(paste0("Are you sure you want to delete the game ", gameId, " including all pages and computed equilibria?"))
+  # ), footer = tagList(smallButton("delOkBtn","Delete"),smallButton("cancelModalBtn","Cancel"))
+  # ))
+  
   
   xs.update.project.tree()
   
 }
+
+xs.new.game.click = function(gameId="NewGame", xs=app$xs, app=getApp(), json=NULL) {
+  restore.point("xs.new.game.click")
+	if (isTRUE(xs$demo.mode)) {
+		demo.mode.alert(); return();
+	}
+	ok.fun = function(gameId,...) {
+		cat("\nmake new game...")
+		xs.new.game(gameId = gameId)
+	}
+	showGameNameModal(ok.fun, title="Create new game",default.name = "")	
+}
+
+
 
 xs.new.game = function(gameId="NewGame", xs=app$xs, app=getApp(), json=NULL) {
   restore.point("xs.new.game")
@@ -264,10 +379,12 @@ xs.new.game = function(gameId="NewGame", xs=app$xs, app=getApp(), json=NULL) {
 		demo.mode.alert(); return();
 	}
   
+	make.game.dir(gameId)
+	
   if (is.null(json))
     json = empty.jg.json(gameId)
   
-  file = file.path(xs$games.dir,paste0(gameId,".json"))
+  file = file.path(xs$games.dir,gameId,paste0(gameId,".json"))
   writeLines(json, file)
   
   xs$gamesId = unique(c(xs$gamesId,gameId))
@@ -285,12 +402,51 @@ xs.duplicate.game = function(gameId, xs=app$xs, app=getApp()) {
 	index=2
 	while((newId <- paste0(gameId,index)) %in% xs$gamesId) index = index+1
 	
+	oldId = gameId
+	ns = "xs-dupl-game"
 	
-	jg = get.jg(gameId)
-	jg$gameId = newId
+	dupl.fun = function(gameId,...) {
+		restore.point("dupl.fun")
+		newId = gameId
+		jg = get.jg(oldId)
+		jg$gameId = newId
+		json = jg.to.json(jg)
+		make.game.dir(newId)
+		# copy pages
+		file.copy(from=get.pages.dir(oldId),to=get.game.dir(newId),recursive = TRUE)
+		xs.new.game(gameId=newId,json=json, xs=xs)
+	}
+	showGameNameModal(dupl.fun,title=paste0("Duplicate game ", oldId),default.name = newId)
+}
+
+xs.rename.game = function(gameId, xs=app$xs, app=getApp()) {
+	restore.point("xs.rename.game")
+	cat("\nrename game", gameId,"\n")
+	if (isTRUE(xs$demo.mode)) {
+		demo.mode.alert(); return();
+	}
 	
-	json = jg.to.json(jg)
-	xs.new.game(gameId=newId,json=json, xs=xs)
+	oldId = gameId
+	ns = "xs-dupl-game"
+	rename.fun = function(gameId,...) {
+		restore.point("dupl.fun")
+		newId = gameId
+		jg = get.jg(oldId)
+		jg$gameId = newId
+		json = jg.to.json(jg)
+		make.game.dir(newId)
+		# copy pages
+		file.copy(from=get.pages.dir(oldId),to=get.game.dir(newId),recursive = TRUE)
+		old.dir = get.game.dir(oldId)
+		try(unlink(old.dir))
+		xs.new.game(gameId=newId,json=json, xs=xs)
+	}
+	showGameNameModal(dupl.fun,title=paste0("Duplicate game ", oldId),default.name = newId)
+}
+
+
+does.game.exist = function(gameId, project.dir=get.project.dir()) {
+	dir.exists(file.path(project.dir,"games", gameId))
 }
 
 xs.show.game.tab = function(gameId, xs=app$xs, app=getApp()) {
@@ -436,7 +592,11 @@ xs.save.game.click = function(json, value, gameId,...,xs=app$xs, app=getApp()) {
   ns = NS(gameId)
   cat("\nsave game...")
   li = fromJSON(json)
+  
+  
   new.game = (!identical(gameId,li$gameId))
+  
+  
   gameId = li$gameId
   
   json = paste0('{"game": ',json,'}')
@@ -588,4 +748,31 @@ demo.mode.alert = function(title="Action not feasible in gtree demo mode", msg='
 <br><br>
 and follow the installation instructions to install your own local version of gtree.') {
 	showModal(modalDialog(HTML(msg),title=title,easyClose = TRUE))
+}
+
+close.game.tabs = function(gameId,types=c("run","eq"), xs=app$xs, app=getApp()) {
+	restore.point("close.game.tabs")
+	
+	types.prefix = c(game="tab_game_",run="tab_run_",eq="tab_eq_")
+	type = types[1]
+	for (type in types) {
+		prefix = types.prefix[type]
+		tabs = xs$tabs[str.starts.with(xs$tabs,prefix)]
+		right = str.right.of(tabs, prefix)
+		tabs = tabs[has.substr(right,gameId)]
+		tabs
+		xs$tabs = setdiff(xs$tabs, tabs)
+	  for (tabId in tabs) {
+			if (type == "run") {
+  			divId = paste0("div_run_", str.right.of(tabId,"tab_run_"))
+  			w2tabs.destroy.tab.content(divId)
+			} else if (type == "eq") {
+  			divId = paste0("div_eq_", str.right.of(tabId,"tab_eq_"))
+  			w2tabs.destroy.tab.content(divId)
+			}	  	
+  		w2tabs.close("xsTabs", tabId)
+	  }
+
+	}
+
 }

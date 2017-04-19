@@ -168,7 +168,7 @@ xeq.solve = function(xeq, formValues,clear=TRUE,  never.load=TRUE) {
 					eqo = select(eqo, .id, everything())
 					xeq$eqo.li[[id]] = eqo
 				} else {
-					tg.to.efg(tg=tg, path=get.games.dir())
+					tg.to.efg(tg=tg)
 				}
 			}
 		}

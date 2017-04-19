@@ -123,7 +123,7 @@ expected.eq.outcomes = function(eqo.df, group.vars=c("eq.ind", "eqo.ind")) {
 
 
 #' Finds one or all mixed strategy equilibria
-gambit.solve.eq = function(tg, mixed=FALSE, just.spe=TRUE, efg.file=tg.efg.file.name(tg), efg.dir=get.eq.dir(), gambit.dir="", solver=NULL, eq.dir = efg.dir, save.eq = TRUE, solvemode=NULL) {
+gambit.solve.eq = function(tg, mixed=FALSE, just.spe=TRUE, efg.file=tg.efg.file.name(tg), efg.dir=get.efg.dir(tg$gameId), gambit.dir="", solver=NULL, eq.dir = get.eq.dir(tg$gameId), save.eq = TRUE, solvemode=NULL) {
   
   restore.point("gambit.solve.eq")
   
@@ -192,7 +192,7 @@ gambit.solve.eq = function(tg, mixed=FALSE, just.spe=TRUE, efg.file=tg.efg.file.
   eq.li
 }
 
-save.eq.li = function(eq.li, eq.id = get.eq.id(tg=tg,...),tg,  eq.dir=get.eq.dir(),...) {
+save.eq.li = function(eq.li, eq.id = get.eq.id(tg=tg,...),tg,  eq.dir=get.eq.dir(tg$gameId),...) {
 	eq = list(
 		eq.id = eq.id,
 		tg.id = tg$tg.id,
@@ -419,7 +419,7 @@ example.gambit.job = function() {
 }
 
 #' Finds one or all mixed strategy equilibria
-start.gambit.job = function(tg, mixed=FALSE, just.spe=TRUE, efg.file=tg.efg.file.name(tg), efg.dir=get.eq.dir(), gambit.dir="", solver=NULL, eq.dir = efg.dir, solvemode=NULL, jobs.dir = file.path(get.project.dir(),"jobs"), ...) {
+start.gambit.job = function(tg, mixed=FALSE, just.spe=TRUE, efg.file=tg.efg.file.name(tg), efg.dir=get.efg.dir(tg$gameId), gambit.dir="", solver=NULL, eq.dir = get.eq.dir(tg$gameId), solvemode=NULL, jobs.dir = file.path(get.project.dir(),"jobs"), ...) {
   
   restore.point("start.gambit.job")
   

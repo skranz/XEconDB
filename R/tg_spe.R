@@ -256,7 +256,7 @@ get.tg.spo.li = function(tg) {
 	make.tg.spo.li(tg)
 }
 
-solve.all.tg.spe = function(tg, eq.dir = get.eq.dir(), save.eq=TRUE) {
+solve.all.tg.spe = function(tg, eq.dir = get.eq.dir(tg$gameId), save.eq=TRUE) {
 	restore.point("solve.all.tg.spe")
 	
 	start.time = Sys.time()

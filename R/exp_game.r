@@ -20,7 +20,7 @@ new.em = function(vg=vg, subIds=NULL, app.li = NULL, container.ids = "mainUI") {
 	
 	em$act.stage = 0
 	em$stage = NULL
-  em$is.waiting = rep(TRUE,n)
+  em$is.waiting = em$stage.finished = rep(TRUE,n)
   em
 }
 
@@ -110,6 +110,7 @@ em.start.match = function(em) {
   em.run.next.stages(em=em)
 }
 
+
 em.run.next.stages = function(em) {
   restore.point("em.run.next.stages")
   vg = em$vg
@@ -140,6 +141,7 @@ em.run.next.stages = function(em) {
     if (identical(players,"")) players = NULL
     i = 1
     em$is.waiting = !seq_len(n) %in% players
+    em$stage.finished = em$is.waiting
     if (length(players)==0)
       return(em.run.next.stages(em))
     
@@ -218,7 +220,14 @@ em.submit.btn.click = function(formValues, player, stage.name,action.ids, ..., e
 		avals = lapply(formValues[action.ids], convert.atom)
 		em$values[names(action.ids)] = avals
 	}
-	em.run.next.stages(em)
+	
+	em$stage.finished[player] = TRUE
+	if(all(em$stage.finished)) {
+		em.run.next.stages(em)
+	} else {
+		em$is.waiting[player] = TRUE
+		em.show.current.page(em = em, player=player)
+	}
 }
 
 submitPageBtn = function(label="Press to continue",em=get.em(),player=em$player,...) {

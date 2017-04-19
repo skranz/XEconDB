@@ -13,11 +13,35 @@ get.games.dir = function(project.dir = get.project.dir()) {
 	file.path(project.dir,"games")
 }
 
-
-get.eq.dir = function(project.dir = get.project.dir()) {
-	file.path(project.dir,"eq")
+get.game.dir = function(gameId, project.dir=get.project.dir()) {
+	file.path(project.dir,"games",gameId)
 }
 
+get.eq.dir = function(gameId, project.dir = get.project.dir()) {
+	file.path(project.dir,"games",gameId,"eq")
+}
+
+get.efg.dir = function(gameId, project.dir = get.project.dir()) {
+	file.path(project.dir,"games",gameId,"gambit")
+}
+
+get.pages.dir = function(gameId, project.dir = get.project.dir()) {
+	file.path(project.dir,"games",gameId,"pages")
+}
+
+
+make.game.dir = function(gameId, games.dir = file.path(project.dir,"games"), project.dir=get.project.dir()) {
+	if (length(gameId)!=1) return()
+	if (nchar(gameId)==0) return()
+	game.dir = file.path(games.dir, gameId)
+	
+	if (dir.exists(game.dir)) return()
+	
+	dir.create(game.dir)
+	dir.create(file.path(game.dir,"eq"))
+	dir.create(file.path(game.dir,"gambit"))
+	dir.create(file.path(game.dir,"pages"))
+}
 
 get.jg.hash = function(jg.hash=NULL, jg=NULL, rg=NULL,vg=NULL, tg=NULL) {
 	hash = first.non.null(jg.hash, rg$jg.hash, vg$jg.hash, tg$jg.hash)
@@ -25,7 +49,7 @@ get.jg.hash = function(jg.hash=NULL, jg=NULL, rg=NULL,vg=NULL, tg=NULL) {
 	hash
 }
 
-get.jg = function(gameId,json.file = paste0(games.dir,"/",gameId,".json"), games.dir = get.games.dir(project.dir), project.dir = get.project.dir(), jg=NULL) {
+get.jg = function(gameId,json.file = paste0(game.dir,"/",gameId,".json"), game.dir=file.path(games.dir,gameId), games.dir = get.games.dir(project.dir), project.dir = get.project.dir(), jg=NULL) {
 	restore.point("get.jg")
 	if (!is.null(jg)) return(jg)
 	
@@ -42,7 +66,8 @@ get.rg = function(gameId = jg$gameId, jg.hash = get.jg.hash(jg=jg),jg=NULL,rg=NU
 		jg.hash = get.jg.hash(jg=jg)
 	}
 	
-	file = file.path(games.dir, paste0(gameId,".rg"))
+	
+	file = file.path(games.dir,gameId, paste0(gameId,".rg"))
 	if (file.exists(file)) {
 		# return old rg if jg.hash has not changed
 		rg = readRDS(file)
@@ -74,7 +99,7 @@ get.vg = function(variant=1, gameId = first.non.null(jg$gameId,rg$gameId), jg.ha
 	}
 	
 	
-	file = file.path(games.dir, paste0(gameId,"_",variant, ".vg"))
+	file = file.path(games.dir,gameId, paste0(gameId,"_",variant, ".vg"))
 	if (file.exists(file) & !always.new) {
 		# return old vg if jg.hash has not changed
 		vg = readRDS(file)
@@ -106,7 +131,7 @@ get.tg = function(variant=first.non.null(vg$variant,1), gameId = first.non.null(
 	}
 	
 	
-	file = file.path(games.dir, paste0(gameId,"_",variant, ".tg"))
+	file = file.path(games.dir,gameId, paste0(gameId,"_",variant, ".tg"))
 	if (file.exists(file) & !never.load) {
 		# return old vg if jg.hash has not changed
 		tg = readRDS(file)
@@ -131,22 +156,32 @@ get.tg = function(variant=first.non.null(vg$variant,1), gameId = first.non.null(
 }
 
 save.rg = function(rg, games.dir = get.games.dir(project.dir), project.dir = get.project.dir()) {
-	file = file.path(games.dir, paste0(rg$gameId, ".rg"))
+	gameId = rg$gameId
+	make.game.dir(gameId,games.dir = games.dir)
+	
+	file = file.path(games.dir,rg$gameId, paste0(rg$gameId, ".rg"))
 	saveRDS(rg, file)
 }
 
 save.vg = function(vg, games.dir = get.games.dir(project.dir), project.dir = get.project.dir()) {
-	file = file.path(games.dir, paste0(vg$gameId,"_",vg$variant, ".vg"))
+	gameId = vg$gameId
+	make.game.dir(gameId,games.dir = games.dir)
+	
+	file = file.path(games.dir,gameId, paste0(gameId,"_",vg$variant, ".vg"))
 	saveRDS(vg, file)
 }
 
 
 save.tg = function(tg, games.dir = get.games.dir(project.dir), project.dir = get.project.dir()) {
-	file = file.path(games.dir, paste0(tg$gameId,"_",tg$variant, ".tg"))
+	gameId = tg$gameId
+	make.game.dir(gameId,games.dir = games.dir)
+	
+	file = file.path(games.dir,gameId, paste0(gameId,"_",tg$variant, ".tg"))
 	saveRDS(tg, file)
 }
 
-get.eq = function(tg, util.funs=NULL, just.spe=TRUE, mixed=FALSE, eq.dir = get.eq.dir(project.dir), project.dir = get.project.dir(), save.new = TRUE, solvemode=NULL, solver=NULL,...) {
+
+get.eq = function(tg, util.funs=NULL, just.spe=TRUE, mixed=FALSE, eq.dir = get.eq.dir(tg$gameId,project.dir), project.dir = get.project.dir(), save.new = TRUE, solvemode=NULL, solver=NULL,...) {
 	restore.point("get.eq")
 	if (!is.null(util.funs))
 		set.tg.util(tg=tg,util.funs)

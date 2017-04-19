@@ -12,6 +12,7 @@ Depends:
   data.table,dplyr, dplyrExtras, 
   shiny, shinyAce, shinyBS,
   shinyEvents, shinyEventsUI, codeUtils, tidyr, digest,
-  whisker,markdown, rmdtools, sys
+  whisker,markdown, rmdtools, sys,
+  shinythemes
 Imports: Rcpp (>= 0.11.0)
 LinkingTo: Rcpp

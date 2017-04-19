@@ -24,7 +24,7 @@ expSubjectLoginApp = function(project.dir=get.project.dir()) {
 }
 
 
-expApp = function(project.dir=get.project.dir(), url="http://localhost:7733") {
+expApp = function(project.dir=get.project.dir(), url="http://localhost:7733", theme="default") {
   restore.point("xsApp")
   
   library(shinyEventsUI)
@@ -40,6 +40,7 @@ expApp = function(project.dir=get.project.dir(), url="http://localhost:7733") {
   
   setwd(project.dir)
 	app$ui = fluidPage(
+		#theme = "xecon/css/freelancer.css",
 		aceEditorHeader(),
 		uiOutput("mainUI")
 	)  
