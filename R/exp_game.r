@@ -30,7 +30,7 @@ em.make.stage.ui = function(stage, player, em) {
 	vg = em$vg
 	page = load.rg.stage.page(stage, rg=vg)
 	
-	em$page.values = c(em$values, list(.player = player))
+	em$page.values = c(em$values, list(.player = player, .em=em, .vg=vg))
 	
 	# will only be temporary assigned
 	em$player = player
@@ -206,20 +206,32 @@ wait.ui = function(...) {
   ui
 }
 
-em.submit.btn.click = function(formValues, player, stage.name,action.ids, ..., em=get.em()) {
+em.submit.btn.click = function(formValues, player, stage.name,action.ids,sm.ids, ..., em=get.em()) {
 	restore.point("em.submit.btn.click")
 	cat("\nsubmit.btn.clicked!\n")
-	for (id in action.ids) {
+	
+	ids = c(action.ids, sm.ids)
+	for (id in ids) {
 		if (isTRUE(length(formValues[[id]])==0) |  isTRUE(formValues[[id]]=="")) {
 			errorMessage(get.page.ns(stage.name = stage.name,player=player)("msg"),"Please make all required choices, before you continue.")
 			return()
 		}
 	}
 	
-	if (length(formValues)>0 & length(action.ids)>0) {
-		avals = lapply(formValues[action.ids], convert.atom)
-		em$values[names(action.ids)] = avals
+	if (length(formValues)>0 & length(ids)>0) {
+		avals = lapply(formValues[ids], convert.atom)
+		em$values[names(ids)] = avals
+		
+		# assign strategy method values
+		actions = em$stage$actions
+		# which actions use strategy method
+		use.sm = sapply(actions, function(action) !is.null(action$domain.var))
+		for (action.name in names(actions[use.sm])) {
+			em$values[[action.name]] = get.sm.value(action.name = action.name,values = em$values,domain.var = actions[[action.name]]$domain.var)
+		}
 	}
+	
+	
 	
 	em$stage.finished[player] = TRUE
 	if(all(em$stage.finished)) {
@@ -230,26 +242,47 @@ em.submit.btn.click = function(formValues, player, stage.name,action.ids, ..., e
 	}
 }
 
+get.sm.value = function(action.name, values, domain.var) {
+	restore.point("get.sm.value")
+	postfix = paste0(values[domain.var], collapse="_")
+	var = paste0(action.name,"_",postfix)
+	values[[var]]
+	
+}
+
 submitPageBtn = function(label="Press to continue",em=get.em(),player=em$player,...) {
 	restore.point("submitPageBtn")
 	
 	ns = get.page.ns(em$stage$name,em$player)
 
 	id = paste0(ns("submitPageBtn"))
-	action.ids = sapply(names(em$stage$actions),get.action.input.id, em=em)
 	
-
+	actions = em$stage$actions
+	
+	# which actions use strategy method
+	use.sm = unlist(sapply(actions, function(action) !is.null(action$domain.var)))
+	if (is.null(use.sm)) use.sm = logical(0)
+	
+	action.ids = unlist(sapply(names(actions[!use.sm]),get.action.input.id, em=em,USE.NAMES = FALSE))
+	
+	# get ids of all strategy method fields
+	li = lapply(actions[use.sm], function(action) {
+		postfix = paste.matrix.cols(action$domain.vals,sep="_")
+		get.action.input.id(name=paste0(action$name,"_",postfix),em=em)
+	})
+	names(li) = NULL
+	sm.ids = unlist(li)
 
 	app = get.em.player.app(em=em, player=player)
 	
-	buttonHandler(id, em.submit.btn.click, player=em$player, stage.name = em$stage$name, action.ids=action.ids,app = app)
+	buttonHandler(id, em.submit.btn.click, player=em$player, stage.name = em$stage$name, action.ids=action.ids,sm.ids=sm.ids, app = app)
 	
 	dsetUI(ns("msg"),"", app=app)
 
 	as.character(
 		tagList(
 			uiOutput(ns("msg")),
-			smallButton(id,label, form.ids = action.ids)
+			smallButton(id,label, form.ids = c(action.ids,sm.ids))
 		)
 	)
 }
@@ -292,38 +325,65 @@ actionField = function(name,label=NULL,choiceLabels=NULL, inputType="auto",em=ge
 	html	
 }
 
-stratMethRows = function(action,ref.var,ref.vals, html = paste0(
-'<td>{{ref.val}}</td>
-<td> {{stratMethInput(inputType="select")}}</td>'),em=get.em(),player=em$player,as.tr = FALSE, ...) {
+
+
+eval.stratMethRows.block = function(txt,envir=parent.frame(), out.type=first.none.null(cr$out.type,"html"),info=NULL, cr=NULL,...) {
+	args = list(...)
+	restore.point("eval.stratMethRows.block")
+	
+	html = merge.lines(info$inner.txt)
+	# need to reverse placeholders to original whiskers
+	html = reverse.whisker.placeholders(html, cr=cr)
+	
+	
+	args = parse.block.args(info$header)
+	action.name = args$action
+	em = envir$.em
+	stage = em$stage
+	action = stage$actions[[action.name]]
+	
+	out = stratMethRows(action=action.name, domain.vals =action$domain.vals, html=html, em=em)
+	out
+}
+
+
+stratMethRows = function(action.name,domain.vals, html,em=get.em(),player=em$player,as.tr = FALSE, ...) {
 	restore.point("stratMethTable")
 	vg = em$vg
 	stage = em$stage
-
+	domain.var = names(domain.vals)
+	
+	domain.vals = as_data_frame(domain.vals)
+	
 	stratMethInput = function(inputType="select",choiceLabels=NULL,...) {
-		actionField(name = paste0(action,"_",ref.val),label = "",inputType = inputType,choiceLabels = choiceLabels, em=em, action.name=action)
+		actionField(name = paste0(action.name,"_",domain.val),label = "",inputType = inputType,choiceLabels = choiceLabels, em=em, action.name=action.name)
 	}
 
-	values = c(nlist(action, ref.var, ref.vals,stratMethInput), em$page.values)
+	values = c(nlist(action=action.name, domain.var, stratMethInput), em$page.values)
 	
-	ref.val = 0
-	html = unlist(lapply(ref.vals, function(loc.ref.val) {
-		ref.val <<- loc.ref.val
-		values$ref.val = ref.val
+	domain.val = 0
+	res.html = unlist(lapply(seq_len(NROW(domain.vals)), function(row) {
+		# assign to global
+		# to make domain.val
+		# accessible in stratMethodInput
+		domain.val <<- as.list(domain.vals[row,])
+		values$domain.val = domain.val
 		replace.whiskers(merge.lines(html), values, eval=TRUE)
 	}))
 
 	if (as.tr) {
-		html = paste0("<tr>", html,"</tr>", collapse="\n")
+		res.html = paste0("<tr>", res.html,"</tr>", collapse="\n")
 	} else {
-		html = paste0(html, collapse="\n")
+		res.html = paste0(res.html, collapse="\n")
 	}
-	html
+	res.html
 }
 
 
 
 get.action.input.id = function(name, stage=em$stage, player=em$player, vg=em$vg, em=NULL) {
-	id = paste0(em$vg$vg.id,"-action-",name, "-",em$player) 
+	id = paste0(em$vg$vg.id,"-action-",name, "-",em$player)
+	names(id) = name
 	id
 }
 

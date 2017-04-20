@@ -11,7 +11,7 @@
 examples.jg.to.rg = function() {
 	setwd("D:/libraries/XEconDB/projects/UltimatumGame/")
   
-	gameId = "LureOfAuthorityReduced"
+	gameId = "UltStratMeth"
 	gameId = "AB"
 	jg = get.jg(gameId = gameId)
 	rg = jg.to.rg(jg)
@@ -48,6 +48,9 @@ parse.jg.stages = function(rg, jg, kel=rg$kel) {
   		names(stage$nature) = get.names(stage$nature)
   	if (length(stage$compute)>0)
   		names(stage$compute) = get.names(stage$compute)
+  	for (ind in seq_along(stage$actions)) {
+  		stage$actions[[ind]]$domain.var = get.strategyMethodDomainVar(action = stage$actions[[ind]], rg=rg)
+  	}
   	stage
   })
   names(rg$stages) = get.names(rg$stages)
@@ -252,26 +255,25 @@ rewrite.if.formula = function(str) {
 }
 
 
-case_distinction = function(...) {
-  args = list(...)
-  
-  restore.point("case_distinction")
-  n = length(args)
-  n = 3
-  val.ind = seq(1,n,by=2)
-  cond.ind = seq(2,n,by=2)
 
-  vals = args[val.ind]
-  cond = args[cond.ind]
-  nv = length(vals) 
-  
-  len = max(sapply(cond,length),sapply(vals,length))
-  v = rep(vals[[nv]], length.out=len)
-  if (nv >1) {
-    for (i in (nv-1):1) {
-      rows = which(rep(cond[[i]], length.out=len))
-      v[rows] = rep(vals[[i]], length.out=len)[rows]
-    }
-  }
-  v
+get.strategyMethodDomainVar = function(action,rg) {
+	restore.point("eval.strategyMethodDomain")
+	
+	smd = action$strategyMethodDomain
+
+	if (is.character(smd)) {
+		if (nchar(smd)==0) return(NULL)
+		return(smd)
+	}
+	
+	# smd is now a call
+	
+	smd.vars = find.variables(smd)
+	params = as.list(rg$varpar[1,])
+	
+	if (!all(smd.vars %in% names(params))) {
+		kel$error(paste0("A strategyMethodDomain can only depend on parameters but not any other variable. Thus you cannot condition on ", paste0(setdiff(md.vars, names(rg$params)), collapse=", " ),"."))
+	}
+	smd = names(eval(smd, params))
+	smd
 }

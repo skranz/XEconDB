@@ -66,51 +66,7 @@ make.stage.page = function(stage=rg$stages[[1]], rg, pages.dir = get.pages.dir(g
 	if (lang != "en") lang = "native"
 	action.txt = ""
 	if (length(stage$actions)>0) {
-		action.txt = lapply(stage$actions, function(action){
-			label = paste0(action$name,":")
-			choiceLabels = action$labels
-			if (identical(choiceLabels,"")) choiceLabels=NULL
-			if (is.null(choiceLabels)) {
-				clc = "NULL"
-			} else {
-				clc = paste0("c(", paste0('"', choiceLabels,'"', collapse=", "),")")
-			}
-			
-			if (nchar(action$strategyMethodDomain)>0) {
-				refvar = action$strategyMethodDomain
-				refvals = "1:10"
-				table.class = paste0("table-",stage$name,"-",action$name) 
-				res = paste0('
-Choose your "',action$name,'" depending on "',refvar,'
-"
-<!--
-You can adapt the style of the strategy method table cells here. -->
-<style>
-table.',table.class,' td {
-  border-bottom: solid;
-  border-bottom-width: 1px;
-  padding-left: 5px;
-}
-</style>
-<table class="',table.class,'">
-<tr><td>',refvar,'</td><td>Your choice</td></tr>
-<!-- We will generate one row for each element of ref.vals, i.e. for all possible values of the reference variable. You may need to adapt ref.vals manually-->
-#< stratMethRows action= "',action$name,'", ref.var="',refvar,'", ref.vals=',refvals,'
-<tr>
-<td>{{ref.val}}</td>
-<!-- possible input types: "rowRadio", "select", "radio" --> 
-<td>{{stratMethInput(inputType="select", choiceLabels= ', clc,')}}</td>
-</tr>
-#> end stratMethRows
-
-</table>
-')
-				return(res)
-			}
-			paste0(
-'{{actionField(name="',action$name,'", label="',label,'", choiceLabels = ', clc,")}}") 
-		})
-		
+		action.txt = lapply(stage$actions, make.page.action.txt, rg=rg, stage=stage)
 		action.txt = paste0("\n",paste0(action.txt, collapse="\n<br>\n"))
 	} else {
 		action.txt = ""
@@ -128,6 +84,59 @@ table.',table.class,' td {
 	
 }
 
+
+
+make.page.action.txt = function(action,rg, stage) {
+	restore.point("make.page.action.txt")
+	label = paste0(action$name,":")
+	choiceLabels = action$labels
+	if (identical(choiceLabels,"")) choiceLabels=NULL
+	
+	if (is.null(choiceLabels)) {
+		clc = "NULL"
+	} else {
+		clc = paste0("c(", paste0('"', choiceLabels,'"', collapse=", "),")")
+	}
+	
+	if (!is.null(action$domain.var)) {
+		restore.point("make.page.stratmeth.txt")
+		domain.var = action$domain.var
+		domain.var.td = paste0('<td>', domain.var,'</td>', collapse=" ")
+		domain.val.td = paste0('<td>{{domain.val[["', domain.var,'"]]}}</td>', collapse=" ")
+		
+		
+		table.class = paste0("table-",stage$name,"-",action$name) 
+		res = paste0('
+Choose your action "',action$name,'" conditional on the value of "',paste0(domain.var, collapse=", "),'
+"
+<!--
+You can adapt the style of the strategy method table cells here. -->
+<style>
+	table.',table.class,' td {
+		border-bottom: solid;
+		border-bottom-width: 1px;
+		padding-left: 5px;
+	}
+</style>
+<table class="',table.class,'">
+<tr>', domain.var.td,'<td>Your choice</td></tr>
+
+#< stratMethRows action= "',action$name,'"
+<tr>
+',domain.val.td,'
+<!-- possible input types: "rowRadio", "select", "radio" --> 
+<td>{{stratMethInput(inputType="select", choiceLabels= ', clc,')}}</td>
+</tr>
+#> end stratMethRows
+
+</table>
+')
+		return(res)
+	}
+	paste0(
+'{{actionField(name="',action$name,'", label="',label,'", choiceLabels = ', clc,")}}")
+}
+
 save.stage.page = function(txt,gameId, stage.name, pages.dir = get.pages.dir(gameId=gameId), file = NULL, auto=FALSE) {
 	restore.point("save.stage.page")
 	if (is.null(file)) {
@@ -139,17 +148,3 @@ save.stage.page = function(txt,gameId, stage.name, pages.dir = get.pages.dir(gam
 	writeLines(txt, file.path(pages.dir,file))
 }
 
-
-eval.stratMethRows.block = function(txt,envir=parent.frame(), out.type=first.none.null(cr$out.type,"html"),info=NULL, cr=NULL,...) {
-	args = list(...)
-	restore.point("eval.stratMethRows.block")
-	
-	
-	html = merge.lines(info$inner.txt)
-	# need to reverse placeholders to original whiskers
-	html = reverse.whisker.placeholders(html, cr=cr)
-	args = parse.block.args(info$header)
-
-	out = do.call(stratMethRows, c(args, list(html=html)))
-	out
-}

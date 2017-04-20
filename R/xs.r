@@ -3,8 +3,8 @@
 xecon.glob = new.env()
 
 examples.xsApp = function() {
-	restore.point.options(display.restore.point = TRUE)
 	set.storing(TRUE)
+	restore.point.options(display.restore.point = TRUE)
   projects.dir = "D:/libraries/XEconDB/projects"
   app = xsApp(projects.dir, never.load.tg=FALSE, demo.mode = FALSE)
   viewApp(app)
@@ -632,11 +632,14 @@ xs.check.game.click = function(json, value, gameId,..., xs= app$xs, app=getApp()
 
     return(FALSE)
   }
-  vg = get.vg(rg=rg, games.dir=xs$games.dir, always.new=TRUE)
-  if (vg$kel$count>0) {
-    callJS("xecon.showGameTreeErrors",gameId, vg$kel$log)
-    timedMessage(ns("msg"),"There are problems. Scroll below for details.")
-    return(FALSE)
+  
+  for (variant in rg$variants) {
+	  vg = get.vg(rg=rg,variant = variant, games.dir=xs$games.dir, always.new=TRUE)
+	  if (vg$kel$count>0) {
+	    callJS("xecon.showGameTreeErrors",gameId, vg$kel$log)
+	    timedMessage(ns("msg"),"There are problems. Scroll below for details.")
+	    return(FALSE)
+	  }
   }
   
   #tg = get.tg(vg=vg, games.dir=xs$games.dir,branching.limit=1000)

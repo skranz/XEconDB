@@ -100,6 +100,7 @@ extract.vg.vars.info = function(vg, kel=vg$kel) {
     }
     
     for (a.num in seq_along(stage$actions)) {
+    	restore.point("dhfkjdhfuihdufih")
     	a = stage$actions[[a.num]]
     	move.key = kel$setKey(stage.key, "actions", a.num)
       
@@ -110,6 +111,9 @@ extract.vg.vars.info = function(vg, kel=vg$kel) {
         vals[[var]] = val
         classes[[var]] = class(val)[1]
       }
+      
+      smd = eval.strategyMethodDomain(vg=vg, action=a, stage.num = stage.num, kel=kel)
+      vg$stages[[stage.num]]$actions[[a.num]]$domain.vals = smd
     }
  
     # check observe
@@ -133,4 +137,57 @@ extract.vg.vars.info = function(vg, kel=vg$kel) {
   vg$vars.class = classes
   vg$vars.sample = vals
   vg
+}
+
+eval.strategyMethodDomain = function(action,vg, stage.num, kel) {
+	restore.point("eval.strategyMethodDomain")
+	
+	smd = action$strategyMethodDomain
+	domain.var = action$domain.var
+	
+	if (is.character(smd)) {
+		if (nchar(smd)==0) return(NULL)
+		# try to find the specified variable
+		var = smd
+		old.set = list()
+		has.found = FALSE
+		for (sn in seq_len(stage.num-1)) {
+			actions = vg$stages[[sn]]$actions
+			if (smd %in% get.names(actions)) {
+				action = actions[[smd]]
+				set = action$set
+				
+				# check if the reference variable
+				# has been defined before with a different
+				# set.
+				differ = sapply(old.set, function(os) {
+					!identical(set, os)
+				})
+				if (any(differ)) {
+					kel$error(paste0("Sorry, but the domain variable ", smd," is defined multiple times in earlier stages with different sets. We need a unique set definition to automatically compute the strategy domain. Consider to manually specify the strategy domain. For example,<br> =list(domainvar=1:5)"))
+				}
+				has.found = TRUE
+				old.set = c(old.set, list(set))
+			}
+		}
+		if (!has.found) {
+			kel$error(paste0("Sorry, but your domain variable ", smd," is not defined as an action in an earlier stage."))
+		}
+		var = smd
+		smd = substitute(list(var = set), list(set=set))
+	}
+	
+	if (!is.call(smd) & !is.expression(smd)) {
+		kel$error(paste0("You must either leave the strategyMethodDomain empty, specify a single action name or enter a r formula that evaluates to a list or data frame and has the domain variables as names. Examples:<br>list(offer = 1:5)<br>data_frame(cost=c('low','high','unknown'),observed=c(TRUE,TRUE,FALSE))"))
+	}
+	
+	# smd is now a call
+	
+	smd.vars = find.variables(smd)
+	if (!all(smd.vars %in% names(vg$params))) {
+		kel$error(paste0("A strategyMethodDomain can only depend on parameters but not any other variable. Thus you cannot condition on ", paste0(setdiff(md.vars, names(vg$params)), collapse=", " ),"."))
+	}
+	smd = eval(smd, vg$params)
+	names(smd) = domain.var
+	smd
 }
