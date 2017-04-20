@@ -254,10 +254,10 @@ submitPageBtn = function(label="Press to continue",em=get.em(),player=em$player,
 	)
 }
 
-actionField = function(name,label=NULL,choiceLabels=NULL, inputType="auto",em=get.em(),player=em$player,...) {
+actionField = function(name,label=NULL,choiceLabels=NULL, inputType="auto",em=get.em(),player=em$player,action.name = name, ...) {
 	vg = em$vg
 	stage = em$stage
-	action = stage$actions[[name]]
+	action = stage$actions[[action.name]]
 	if (identical(choiceLabels,""))
 		choiceLabels = NULL
 	restore.point("actionField")
@@ -294,13 +294,13 @@ actionField = function(name,label=NULL,choiceLabels=NULL, inputType="auto",em=ge
 
 stratMethRows = function(action,ref.var,ref.vals, html = paste0(
 '<td>{{ref.val}}</td>
-<td> {{stratMethInput(inputType="select")}}</td>'),em=get.em(),player=em$player, choiceLabels=NULL,as.tr = TRUE, ...) {
+<td> {{stratMethInput(inputType="select")}}</td>'),em=get.em(),player=em$player,as.tr = FALSE, ...) {
 	restore.point("stratMethTable")
 	vg = em$vg
 	stage = em$stage
 
-	stratMethInput = function(inputType="select",...) {
-		actionField(name = paste0(action,"_",ref.val),label = "",inputType = inputType,choiceLabels = choiceLabels)
+	stratMethInput = function(inputType="select",choiceLabels=NULL,...) {
+		actionField(name = paste0(action,"_",ref.val),label = "",inputType = inputType,choiceLabels = choiceLabels, em=em, action.name=action)
 	}
 
 	values = c(nlist(action, ref.var, ref.vals,stratMethInput), em$page.values)

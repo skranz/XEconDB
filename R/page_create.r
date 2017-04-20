@@ -67,9 +67,8 @@ make.stage.page = function(stage=rg$stages[[1]], rg, pages.dir = get.pages.dir(g
 	action.txt = ""
 	if (length(stage$actions)>0) {
 		action.txt = lapply(stage$actions, function(action){
-			form = 	action[[paste0("form_",lang)]]
-			label = first.non.null(form$inputText,paste0(action$name,":"))
-			choiceLabels = form$labels
+			label = paste0(action$name,":")
+			choiceLabels = action$labels
 			if (identical(choiceLabels,"")) choiceLabels=NULL
 			if (is.null(choiceLabels)) {
 				clc = "NULL"
@@ -80,15 +79,27 @@ make.stage.page = function(stage=rg$stages[[1]], rg, pages.dir = get.pages.dir(g
 			if (nchar(action$strategyMethodDomain)>0) {
 				refvar = action$strategyMethodDomain
 				refvals = "1:10"
+				table.class = paste0("table-",stage$name,"-",action$name) 
 				res = paste0('
 Choose your "',action$name,'" depending on "',refvar,'
 "
-<table>
+<!--
+You can adapt the style of the strategy method table cells here. -->
+<style>
+table.',table.class,' td {
+  border-bottom: solid;
+  border-bottom-width: 1px;
+  padding-left: 5px;
+}
+</style>
+<table class="',table.class,'">
 <tr><td>',refvar,'</td><td>Your choice</td></tr>
+<!-- We will generate one row for each element of ref.vals, i.e. for all possible values of the reference variable. You may need to adapt ref.vals manually-->
 #< stratMethRows action= "',action$name,'", ref.var="',refvar,'", ref.vals=',refvals,'
 <tr>
 <td>{{ref.val}}</td>
-<td>{{stratMethInput(inputType="select")}}</td>
+<!-- possible input types: "rowRadio", "select", "radio" --> 
+<td>{{stratMethInput(inputType="select", choiceLabels= ', clc,')}}</td>
 </tr>
 #> end stratMethRows
 
