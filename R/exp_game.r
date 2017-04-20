@@ -41,7 +41,7 @@ em.make.stage.ui = function(stage, player, em) {
 	app = getApp()
 	app$glob$em = em
 	
-	cr = compile.rmd(text=page, out.type = "shiny",envir = em$page.values)
+	cr = compile.rmd(text=page, out.type = "shiny",envir = em$page.values,blocks = "render")
   ui = render.compiled.rmd(cr,envir=em$page.values,use.commonmark=FALSE)
 	ui
 }
@@ -291,6 +291,36 @@ actionField = function(name,label=NULL,choiceLabels=NULL, inputType="auto",em=ge
   html = as.character(ui)
 	html	
 }
+
+stratMethRows = function(action,ref.var,ref.vals, html = paste0(
+'<td>{{ref.val}}</td>
+<td> {{stratMethInput(inputType="select")}}</td>'),em=get.em(),player=em$player, choiceLabels=NULL,as.tr = TRUE, ...) {
+	restore.point("stratMethTable")
+	vg = em$vg
+	stage = em$stage
+
+	stratMethInput = function(inputType="select",...) {
+		actionField(name = paste0(action,"_",ref.val),label = "",inputType = inputType,choiceLabels = choiceLabels)
+	}
+
+	values = c(nlist(action, ref.var, ref.vals,stratMethInput), em$page.values)
+	
+	ref.val = 0
+	html = unlist(lapply(ref.vals, function(loc.ref.val) {
+		ref.val <<- loc.ref.val
+		values$ref.val = ref.val
+		replace.whiskers(merge.lines(html), values, eval=TRUE)
+	}))
+
+	if (as.tr) {
+		html = paste0("<tr>", html,"</tr>", collapse="\n")
+	} else {
+		html = paste0(html, collapse="\n")
+	}
+	html
+}
+
+
 
 get.action.input.id = function(name, stage=em$stage, player=em$player, vg=em$vg, em=NULL) {
 	id = paste0(em$vg$vg.id,"-action-",name, "-",em$player) 

@@ -131,6 +131,8 @@ xs.ui = function(app=getApp(), xs=app$xs) {
   	  xs.delete.game(gameId = gameId)
   	} else if (key=="duplicate" && nodeType == "game") {
   	  xs.duplicate.game(gameId = gameId)
+  	} else if (key=="rename" && nodeType == "game") {
+  	  xs.rename.game(gameId = gameId)
   	}
   	
   })
@@ -273,7 +275,7 @@ showGameNameModal = function(ok.fun, default.name="", msg="Enter the new game na
 	restore.point("showGameNameModal")
 	
 	content = tagList(
-		p(msg),
+		HTML(msg),
 		textInput(ns("newId"),"", value=default.name),
 		uiOutput(ns("help"))
 	)
@@ -427,9 +429,9 @@ xs.rename.game = function(gameId, xs=app$xs, app=getApp()) {
 	}
 	
 	oldId = gameId
-	ns = "xs-dupl-game"
+	ns = "xs-rename-game"
 	rename.fun = function(gameId,...) {
-		restore.point("dupl.fun")
+		restore.point("rename.fun")
 		newId = gameId
 		jg = get.jg(oldId)
 		jg$gameId = newId
@@ -438,10 +440,12 @@ xs.rename.game = function(gameId, xs=app$xs, app=getApp()) {
 		# copy pages
 		file.copy(from=get.pages.dir(oldId),to=get.game.dir(newId),recursive = TRUE)
 		old.dir = get.game.dir(oldId)
-		try(unlink(old.dir))
+		try(unlink(old.dir,recursive = TRUE))
+		xs$gamesId = setdiff(xs$gamesId, oldId)
+
 		xs.new.game(gameId=newId,json=json, xs=xs)
 	}
-	showGameNameModal(dupl.fun,title=paste0("Duplicate game ", oldId),default.name = newId)
+	showGameNameModal(rename.fun,title=paste0("Rename game ", oldId),default.name = oldId,msg = "Note that renaming will delete the cache of all equilibrium computation.<br>Enter the new name.")
 }
 
 
@@ -600,7 +604,7 @@ xs.save.game.click = function(json, value, gameId,...,xs=app$xs, app=getApp()) {
   gameId = li$gameId
   
   json = paste0('{"game": ',json,'}')
-  file = paste0(xs$games.dir,"/",gameId,".json")
+  file = file.path(xs$games.dir,gameId,paste0(gameId,".json"))
   writeLines(json, file)
   
   if (new.game) {

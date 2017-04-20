@@ -1,13 +1,13 @@
 examples.make.pages = function() {
 	setwd("D:/libraries/XEconDB/projects/UltimatumGame")
-	gameId = "UltimatumGame"
+	gameId = "UltStratMeth"
 	
-	rg = get.rg(gameId=gameId, always.new=TRUE)
+	rg = get.rg(gameId=gameId)
 	make.rg.pages(rg)
 	make.stage.page(stage = 2,rg=rg)
 }
 
-load.rg.stage.page = function(stage, rg,  pages.dir = file.path(get.project.dir(),"pages", rg$gameId), file=NULL, make.if.missing = TRUE, remake.auto = TRUE) {
+load.rg.stage.page = function(stage, rg,  pages.dir = get.pages.dir(gameId=rg$gameId), file=NULL, make.if.missing = TRUE, remake.auto = TRUE) {
 	restore.point("load.rg.stage.page")
 	if (is.numeric(stage) | is.character(stage)) {
 		stage = rg$stages[[stage]]
@@ -37,7 +37,7 @@ make.rg.pages = function(rg) {
 	}
 }
 
-make.stage.page = function(stage=rg$stages[[1]], rg, pages.dir = file.path(get.project.dir(),"pages", rg$gameId), file = NULL, lang="en") {
+make.stage.page = function(stage=rg$stages[[1]], rg, pages.dir = get.pages.dir(gameId=rg$gameId), file = NULL, lang="en") {
 	restore.point("make.stage.page")
 	
 	if (is.numeric(stage)) stage = rg$stages[[stage]]
@@ -76,6 +76,26 @@ make.stage.page = function(stage=rg$stages[[1]], rg, pages.dir = file.path(get.p
 			} else {
 				clc = paste0("c(", paste0('"', choiceLabels,'"', collapse=", "),")")
 			}
+			
+			if (nchar(action$strategyMethodDomain)>0) {
+				refvar = action$strategyMethodDomain
+				refvals = "1:10"
+				res = paste0('
+Choose your "',action$name,'" depending on "',refvar,'
+"
+<table>
+<tr><td>',refvar,'</td><td>Your choice</td></tr>
+#< stratMethRows action= "',action$name,'", ref.var="',refvar,'", ref.vals=',refvals,'
+<tr>
+<td>{{ref.val}}</td>
+<td>{{stratMethInput(inputType="select")}}</td>
+</tr>
+#> end stratMethRows
+
+</table>
+')
+				return(res)
+			}
 			paste0(
 '{{actionField(name="',action$name,'", label="',label,'", choiceLabels = ', clc,")}}") 
 		})
@@ -97,7 +117,7 @@ make.stage.page = function(stage=rg$stages[[1]], rg, pages.dir = file.path(get.p
 	
 }
 
-save.stage.page = function(txt,gameId, stage.name, pages.dir = file.path(get.project.dir(),"pages", gameId), file = NULL, auto=FALSE) {
+save.stage.page = function(txt,gameId, stage.name, pages.dir = get.pages.dir(gameId=gameId), file = NULL, auto=FALSE) {
 	restore.point("save.stage.page")
 	if (is.null(file)) {
 		file = paste0(stage.name, ifelse(auto,".auto",""), ".Rmd")
@@ -106,6 +126,19 @@ save.stage.page = function(txt,gameId, stage.name, pages.dir = file.path(get.pro
 		try(dir.create(pages.dir, recursive = TRUE))
 	
 	writeLines(txt, file.path(pages.dir,file))
+}
+
+
+eval.stratMethRows.block = function(txt,envir=parent.frame(), out.type=first.none.null(cr$out.type,"html"),info=NULL, cr=NULL,...) {
+	args = list(...)
+	restore.point("eval.stratMethRows.block")
 	
 	
+	html = merge.lines(info$inner.txt)
+	# need to reverse placeholders to original whiskers
+	html = reverse.whisker.placeholders(html, cr=cr)
+	args = parse.block.args(info$header)
+
+	out = do.call(stratMethRows, c(args, list(html=html)))
+	out
 }

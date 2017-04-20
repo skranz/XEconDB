@@ -309,7 +309,11 @@ initGameTree: function(game) {
         
         if (xs.inputType === "text") {
           value = as_atom(xs.value);
-          html = '<div class="xs_input_div"> <input class="xs_input" type="text" name ="'+xs.inputId+'" id ="'+xs.inputId+'" value="'+value+'"></div>';
+          readonly = ""
+          if (xs.field.readonly === true) {
+          	readonly = " readonly"
+          }
+          html = '<div class="xs_input_div"> <input class="xs_input" type="text" name ="'+xs.inputId+'" id ="'+xs.inputId+'" value="'+value+'"'+readonly+'></div>';
         } else if (xs.inputType === "textArea") {
           value = String(as_atom(xs.value));
           var valueRows = value.split(/\r\n|\r|\n/).length;
@@ -739,4 +743,12 @@ function isArray(value) {
   if (value === null) return(false);
   if (value.constructor === Array) return(true);
   return false;
+}
+
+function helpButtonHtml(id, help) {
+	if (help === null | typeof help === 'undefined')
+		return "";
+	
+	var code = '<button id=\"'+id+'\" style="width: 1em" type="button" class="btn btn-default action-button btn-xs ">?</button><div id="'+id+'_div" style="display: none">'+help+'</div><script> $(\"'+id+'\").click(function(){$("'+id+'").attr("display","visible")};</script>';
+	return code;
 }

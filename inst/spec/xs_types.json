@@ -4,7 +4,7 @@
     "fields": [
       {
         "name": "gameId",
-        "edit": false
+        "readonly": true
       },
       {
         "name": "gameInfo"
@@ -147,12 +147,9 @@
         "help": "If empty, no strategy method is used. Otherwise state the actions (variable name) that consitute the domain for the strategy method. This means for each possible realization of the domain actions, an action must be chosen."
       },
       {
-        "name": "form_en",
-        "type": "actionForm"
-      },
-      {
-        "name": "form_native",
-        "type": "actionForm"
+        "name": "labels",
+        "type": "formula",
+        "help": "Optionally a vector of labels. One label for each element of the set of possible moves. Will be used as default in pages and may lead to more informative data."
       }
     ]
   },
