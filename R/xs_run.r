@@ -56,8 +56,18 @@ xs.run.panel.ui = function(gameId, xs=app$xs, app=getApp()) {
 xs.edit.page.click = function(...) {
 	restore.point("xs.edit.page.click")
 	em = get.em()
-	if (!isTRUE(em$act.stage>0)) return()
-	try(xs.show.edit.page.tab(gameId=em$gameId, stage=em$stage))
+
+	# edit stages from all players that are not
+	# in waiting state
+	stage.nums = em$player.stage[!em$is.waiting]
+	stage.nums = unique(setdiff(stage.nums,0))
+	
+	if (length(stage.nums)==0) return()
+	
+	for (stage.num in stage.nums) {
+		stage = em$vg.stages[[stage.num]]
+		try(xs.show.edit.page.tab(gameId=em$gameId, stage=stage))
+	}
 	
 }
 

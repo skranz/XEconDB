@@ -17,11 +17,21 @@ new.em = function(vg=vg, subIds=NULL, app.li = NULL, container.ids = "mainUI") {
 	em$n = n
 	em$players = seq_len(n)
 	em$values = vg$params
-	
-	em$act.stage = 0
-	em$stage = NULL
-  em$is.waiting = em$stage.finished = rep(TRUE,n)
+
+	em$player.stage = rep(0,n)
+  em$is.waiting  = rep(TRUE,n)
+  em$stage.computed = rep(FALSE, length(em$vg$stages))
   em
+}
+
+em.start.match = function(em) {
+	restore.point("em.start.match")
+	n = em$n
+	em$values = c(list(variant=em$variant),em$vg$params)
+	em$player.stage = rep(0,n)
+  em$is.waiting  = rep(TRUE,n)
+  em$stage.computed = rep(FALSE, length(em$vg$stages))
+  em.proceed.all.player.stage(em=em)
 }
 
 
@@ -34,7 +44,6 @@ em.make.stage.ui = function(stage, player, em) {
 	
 	# will only be temporary assigned
 	em$player = player
-	em$stage = stage
 	em$ns = NS(paste0("em-page-",stage$stage.name,"-",player))
 	
 	# set global em for rendered fields
@@ -77,7 +86,7 @@ em.show.current.page = function(em, player=seq_len(em$vg$params$numPlayers)) {
 	# each subject will have a separate app
 	app = get.em.player.app(em=em, player=player)
 	
-	stage.num = em$act.stage
+	stage.num = em$player.stage[player]
 	if (stage.num < 1 | stage.num > length(em$vg$stages)) {
 		ui = wait.ui(em=em, player)
 		setUI(container.id,ui, app=app)
@@ -101,56 +110,111 @@ em.show.current.page = function(em, player=seq_len(em$vg$params$numPlayers)) {
  	dsetUI(container.id,stage.ui, app=app)  
 }
 
-em.start.match = function(em) {
-	restore.point("em.start.match")
-	em$values = em$vg$params
-	em$act.stage = 0
-	em$stage = NULL
-  em$is.waiting = rep(TRUE,em$n)
-  em.run.next.stages(em=em)
+
+get.em.stage = function(em, player=1) {
+	stage.num = em$player.stage[player]
+	if (stage.num < 1 | stage.num > length(em$vg$stages)) return(NULL)
+	em$vg$stages[[stage.num]]
 }
 
+em.is.stage.for.player = function(em,player=1, stage.num) {
+	restore.point("em.is.stage.for.player")
 
-em.run.next.stages = function(em) {
-  restore.point("em.run.next.stages")
+	stage = em$vg$stages[[stage.num]]
+	has.vars = names(em$values)
+	
+	cond.var = stage$condition.need.var
+	if (!all(cond.var %in% has.vars)) return("wait")
+	if (is.call(stage$condition) | is.name(stage$condition)) {
+		cond.val = eval(stage$condition, em$values)
+		if (!cond.val) return("skip")
+	}
+	
+	# wait until all needed earlier stages are solved
+	# and the corresponding variables are computed
+	if (!all(stage$need.vars %in% has.vars)) return("wait")
+
+	
+	if (is.call(stage$player) | is.name(stage$player)) {
+		stage.player = eval(stage$player, em$values)
+	} else {
+		stage.player = stage$player
+	}
+	
+	if (!player %in% stage.player) {
+		# stage was already computed
+		if (em$stage.computed[stage.num]) return("skip")
+		
+		# a player exists for this stage
+		# only compute when that player enters
+		if (any(1:em$n %in% stage.player)) return("skip")
+		
+		# this is a stage without players
+		# perform computations
+		return("compute")
+	}
+
+	return("show")
+}
+
+em.proceed.all.player.stage = function(em) {
+	for (player in seq_len(em$n)) {
+		# only proceeds if player is waiting
+		em.proceed.player.stage(em, player=player)
+	}
+	
+}
+
+# only proceed if a player has finished her current stage
+em.proceed.player.stage = function(em, player=1) {
+  restore.point("em.proceed.player.stage")
+	
+	#if (player == 2) stop()
+	if (!em$is.waiting[player])
+		return()
+
   vg = em$vg
   n = em$n
   
-  if (em$act.stage == length(vg$stages)) {
-    return(em.finish.match(em))
+  stage.num = em$player.stage[player]
+  
+  restore.point("em.proceed.player.stage.2")
+  
+  next.stage = stage.num
+  while(TRUE) {
+  	next.stage = next.stage + 1
+	  if (next.stage > length(vg$stages)) {
+	  	# TO DO: special handling of final stage
+	  	em$player.stage[player] = length(vg$stages)
+	  	em$is.waiting[player] = TRUE
+	  	em.show.current.page(em, player)
+	    return()
+	  }
+  	res <- em.is.stage.for.player(em=em,player=player, stage.num = next.stage)
+  	if (res == "compute") {
+  		em.run.stage.computations(stage.num=next.stage, em=em)
+  		next
+  	}
+  	if (res == "skip") next
+  	break
   }
   
-  act.stage = em$act.stage = em$act.stage + 1
-  restore.point("run.next.stages.2")
-  
+  # set current stage for player
+  em$player.stage[player] = next.stage
 
-  em$stage = stage = vg$stages[[act.stage]]
-  em$stage.name = stage$name
+  # res is "wait" or "show"
+  if (res == "wait") {
+  	em$is.waiting[player] = TRUE
+  	em.show.current.page(em, player)
+    return()
+  }
 
-  run.stage = TRUE
-  if (!identical(stage$condition,"")) {
-    run.stage = eval.or.return(call=stage$condition, envir=em$values)
-  } else {
-    run.stage = TRUE
-  }
-  
-  if (run.stage) {
-    em.run.stage.computations(stage, em)
-    
-    players = eval.or.return(stage$player,em$values)
-    if (identical(players,"")) players = NULL
-    i = 1
-    em$is.waiting = !seq_len(n) %in% players
-    em$stage.finished = em$is.waiting
-    if (length(players)==0)
-      return(em.run.next.stages(em))
-    
-    em.show.current.page(em=em)
-  } else {
-    return(em.run.next.stages(em))
-  }
-  return(em)
+  # res is "show"
+  em$is.waiting[player] = FALSE
+  em.run.stage.computations(next.stage, em)
+  em.show.current.page(em=em, player=player)
 }
+
 
 em.finish.match = function(em) {
 	ui = tags$p("The game is finished")
@@ -170,8 +234,14 @@ em.finish.match = function(em) {
 # for a stage.
 # Should be called when a stage is reached in
 # a running experiment
-em.run.stage.computations = function(stage, em) {
+em.run.stage.computations = function(stage.num, em, skip.if.computed=TRUE) {
   restore.point("em.run.stage.computations")
+	
+	if (em$stage.computed[stage.num] & skip.if.computed) 
+		return() 
+	
+	em$stage.computed[stage.num] = TRUE
+	stage = em$vg$stages[[stage.num]]
 	
 	# draw from random variables
 	for (rv in stage$nature) {
@@ -194,9 +264,6 @@ em.run.stage.computations = function(stage, em) {
 }
 
 
-
-
-
 get.page.ns = function(stage.name, player) {
 	NS(paste0("page-",stage.name,"-",player))
 }
@@ -206,9 +273,21 @@ wait.ui = function(...) {
   ui
 }
 
+
+get.sm.value = function(action.name, values, domain.var) {
+	restore.point("get.sm.value")
+	postfix = paste0(values[domain.var], collapse="_")
+	var = paste0(action.name,"_",postfix)
+	values[[var]]
+	
+}
+
+
 em.submit.btn.click = function(formValues, player, stage.name,action.ids,sm.ids, ..., em=get.em()) {
 	restore.point("em.submit.btn.click")
 	cat("\nsubmit.btn.clicked!\n")
+	
+	stage = get.em.stage(em=em, player=player)
 	
 	ids = c(action.ids, sm.ids)
 	for (id in ids) {
@@ -223,7 +302,7 @@ em.submit.btn.click = function(formValues, player, stage.name,action.ids,sm.ids,
 		em$values[names(ids)] = avals
 		
 		# assign strategy method values
-		actions = em$stage$actions
+		actions = stage$actions
 		# which actions use strategy method
 		use.sm = sapply(actions, function(action) !is.null(action$domain.var))
 		for (action.name in names(actions[use.sm])) {
@@ -232,32 +311,21 @@ em.submit.btn.click = function(formValues, player, stage.name,action.ids,sm.ids,
 	}
 	
 	
-	
-	em$stage.finished[player] = TRUE
-	if(all(em$stage.finished)) {
-		em.run.next.stages(em)
-	} else {
-		em$is.waiting[player] = TRUE
-		em.show.current.page(em = em, player=player)
-	}
-}
-
-get.sm.value = function(action.name, values, domain.var) {
-	restore.point("get.sm.value")
-	postfix = paste0(values[domain.var], collapse="_")
-	var = paste0(action.name,"_",postfix)
-	values[[var]]
+	em$is.waiting[player] = TRUE
+	em.proceed.all.player.stage(em)
 	
 }
 
 submitPageBtn = function(label="Press to continue",em=get.em(),player=em$player,...) {
 	restore.point("submitPageBtn")
 	
-	ns = get.page.ns(em$stage$name,em$player)
+	stage = get.em.stage(em=em, player=player)
+	
+	ns = get.page.ns(stage$name,em$player)
 
 	id = paste0(ns("submitPageBtn"))
 	
-	actions = em$stage$actions
+	actions = stage$actions
 	
 	# which actions use strategy method
 	use.sm = unlist(sapply(actions, function(action) !is.null(action$domain.var)))
@@ -275,7 +343,7 @@ submitPageBtn = function(label="Press to continue",em=get.em(),player=em$player,
 
 	app = get.em.player.app(em=em, player=player)
 	
-	buttonHandler(id, em.submit.btn.click, player=em$player, stage.name = em$stage$name, action.ids=action.ids,sm.ids=sm.ids, app = app)
+	buttonHandler(id, em.submit.btn.click, player=em$player, stage.name = stage$name, action.ids=action.ids,sm.ids=sm.ids, app = app)
 	
 	dsetUI(ns("msg"),"", app=app)
 
@@ -289,7 +357,7 @@ submitPageBtn = function(label="Press to continue",em=get.em(),player=em$player,
 
 actionField = function(name,label=NULL,choiceLabels=NULL, inputType="auto",em=get.em(),player=em$player,action.name = name, ...) {
 	vg = em$vg
-	stage = em$stage
+	stage = get.em.stage(em, player)
 	action = stage$actions[[action.name]]
 	if (identical(choiceLabels,""))
 		choiceLabels = NULL
@@ -317,7 +385,10 @@ actionField = function(name,label=NULL,choiceLabels=NULL, inputType="auto",em=ge
   }
   if (inputType=="radio") {
     ui = radioButtons(inputId = id,label = label,choices = choices, selected=NA)
+  } else if (inputType=="rowRadio") {
+    ui = rowRadioButtons(inputId = id,label = "",choices = choices, selected=NA)
   } else {
+  	choices = c(list(""),as.list(choices))
     ui = selectizeInput(inputId = id,label = label,choices = choices, selected=NA)    
   }
   
@@ -325,6 +396,28 @@ actionField = function(name,label=NULL,choiceLabels=NULL, inputType="auto",em=ge
 	html	
 }
 
+rowRadioButtons = function(inputId,label=NULL, choices, selected = NA) {
+	restore.point("rowRadioButtons")
+	choices =  shiny:::choicesWithNames(choices)
+
+	checked = rep("", length(choices))
+	if (!is.na(selected)) {
+		names(checked) = as.character(choices)
+		checked[selected] = ' checked="checked"'
+	}
+
+	
+	inner = paste0('
+<td><label>
+		<input type="radio" name="', inputId,'" value="',choices,'"',checked,'/>
+		<span>',names(choices),'</span>
+</label></td>', collapse="\n")
+	
+	html = paste0('<div id="',inputId,'" class="shiny-input-radiogroup shiny-input-container"><table class="rowRadioTable"><tr>',inner,'</tr></table></div>')
+	
+	HTML(html)
+		
+}
 
 
 eval.stratMethRows.block = function(txt,envir=parent.frame(), out.type=first.none.null(cr$out.type,"html"),info=NULL, cr=NULL,...) {
@@ -339,7 +432,8 @@ eval.stratMethRows.block = function(txt,envir=parent.frame(), out.type=first.non
 	args = parse.block.args(info$header)
 	action.name = args$action
 	em = envir$.em
-	stage = em$stage
+	
+	stage = get.em.stage(em=em, player=em$player)
 	action = stage$actions[[action.name]]
 	
 	out = stratMethRows(action=action.name, domain.vals =action$domain.vals, html=html, em=em)
@@ -350,7 +444,7 @@ eval.stratMethRows.block = function(txt,envir=parent.frame(), out.type=first.non
 stratMethRows = function(action.name,domain.vals, html,em=get.em(),player=em$player,as.tr = FALSE, ...) {
 	restore.point("stratMethTable")
 	vg = em$vg
-	stage = em$stage
+	stage = get.em.stage(em, player)
 	domain.var = names(domain.vals)
 	
 	domain.vals = as_data_frame(domain.vals)
@@ -381,7 +475,7 @@ stratMethRows = function(action.name,domain.vals, html,em=get.em(),player=em$pla
 
 
 
-get.action.input.id = function(name, stage=em$stage, player=em$player, vg=em$vg, em=NULL) {
+get.action.input.id = function(name, stage=get.em.stage(em, player), player=em$player, vg=em$vg, em=NULL) {
 	id = paste0(em$vg$vg.id,"-action-",name, "-",em$player)
 	names(id) = name
 	id

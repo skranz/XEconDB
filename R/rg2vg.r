@@ -4,6 +4,20 @@
 # 1. Set variant and params
 # 2. TO DO: Remove stages whose condition always fails in this variant
 
+examples.rg.to.vg = function() {
+	setwd("D:/libraries/XEconDB/projects/UltimatumGame/")
+  
+	gameId = "UltStratMeth"
+	gameId = "ultimatumGame"
+	jg = get.jg(gameId = gameId)
+	rg = jg.to.rg(jg)
+	vg = rg.to.vg(variant=1, rg=rg)
+	vg$stages[[2]]
+	varpar = rg$varpar
+	varpar	
+
+}
+
 
 rg.to.vg = function(rg, variant=1) {
   restore.point("rg.to.vg")
@@ -46,12 +60,13 @@ extract.vg.vars.info = function(vg, kel=vg$kel) {
   classes[names(vg$params)] = sapply(vg$params, function(x) class(x)[1])
   
   
-  
+  stage.num = 2
   # go through stages and compute values and class of variables
   for (stage.num in seq_along(vg$stages)) {
   	stage = vg$stages[[stage.num]]
     stage.key = kel$setKey("stages", stage.num)
 
+    need.vars = condition.need.vars= NULL
     # check condition
     kel$setKey(stage.key, "condition")
   	cond = stage$cond
@@ -60,9 +75,13 @@ extract.vg.vars.info = function(vg, kel=vg$kel) {
 	    if (!identical(str.trim(cond), "")) {
 	    	kel$write("Either you specify no stage condition, or you write an R formula starting with '=', which evaluates as TRUE or FALSE.")
 	    }
+	  } else {
+	  	condition.need.vars = need.vars = find.variables(cond) 
 	  }
     kel$kelTry(eval(cond, vals))
   	
+    
+    
     for (a.num in seq_along(stage$nature)) {
     	a = stage$nature[[a.num]]
       var = a$name
@@ -71,9 +90,11 @@ extract.vg.vars.info = function(vg, kel=vg$kel) {
     	
     	kel$setKey(move.key, "set")
       set = kel$kelTry(eval(a$set, vals), msg=paste0("Evaluating set for ", var))
+      need.vars = unique(c(need.vars,find.variables(a$set)))
       
     	kel$setKey(move.key, "probs")
       kel$kelTry(eval(a$probs, vals), msg=paste0("Evaluating probs for ", var))
+      need.vars = unique(c(need.vars,find.variables(a$probs)))
       
       if (length(set)>0) {
         val = set[ceiling(length(set)*0.3)]
@@ -95,10 +116,14 @@ extract.vg.vars.info = function(vg, kel=vg$kel) {
     		}
     	}
       val = kel$kelTry(eval(a$formula, vals), msg=paste0("Evaluating formula for ", var))
+      need.vars = unique(c(need.vars,find.variables(a$formula)))
+      
+      
       vals[[var]] = val
       classes[[var]] = class(val)[1]
     }
     
+    domain.vars = NULL
     for (a.num in seq_along(stage$actions)) {
     	restore.point("dhfkjdhfuihdufih")
     	a = stage$actions[[a.num]]
@@ -106,6 +131,8 @@ extract.vg.vars.info = function(vg, kel=vg$kel) {
       
     	var = a$name
       set = kel$kelTry(eval(a$set, vals),msg=paste0("Evaluating set for ", var))
+      need.vars = unique(c(need.vars,find.variables(a$set)))
+
       if (length(set)>0) {
         val = set[ceiling(length(set)*0.3)]
         vals[[var]] = val
@@ -113,6 +140,7 @@ extract.vg.vars.info = function(vg, kel=vg$kel) {
       }
       
       smd = eval.strategyMethodDomain(vg=vg, action=a, stage.num = stage.num, kel=kel)
+      domain.vars = unique(c(domain.vars,names(smd)))
       vg$stages[[stage.num]]$actions[[a.num]]$domain.vals = smd
     }
  
@@ -125,10 +153,23 @@ extract.vg.vars.info = function(vg, kel=vg$kel) {
     	if (length(unknown)>0) {
       	kel$write("You cannot observe the variable(s) {{unknown}}, because they have not been defined earlier.", unknown=unknown)
     	}
+			need.vars = unique(c(need.vars,setdiff(observe, domain.vars)))
     } else if (is.call(observe) | is.name(observe)) {
     		kel$warning("Warning: Better don't use a formula for observe: Forms and export to oTree may not work correctly. If you have fixed variables that are observed, just write a list, like [var1, var2]. If the observed variables depend on earlier variables, better create multiple stages with different conditions, that then each have fixed observed variables.")
     		kel$kelTry(eval(observe, vals))
+				need.vars = unique(c(need.vars,setdiff(find.variables(observe), domain.vars)))
+    		
     }
+    
+ 		need.vars = setdiff(need.vars,c(""))
+ 		
+ 		# need vars are useful to determine which stages can be shown
+ 		vg$stages[[stage.num]]$need.vars = need.vars
+ 		vg$stages[[stage.num]]$condition.need.vars = condition.need.vars
+ 		vg$stages[[stage.num]]$domain.vars = domain.vars
+ 		
+ 		
+ 		
   }
 
        

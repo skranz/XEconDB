@@ -49,7 +49,7 @@ parse.jg.stages = function(rg, jg, kel=rg$kel) {
   	if (length(stage$compute)>0)
   		names(stage$compute) = get.names(stage$compute)
   	for (ind in seq_along(stage$actions)) {
-  		stage$actions[[ind]]$domain.var = get.strategyMethodDomainVar(action = stage$actions[[ind]], rg=rg)
+  		stage$actions[[ind]]$domain.var = get.strategyMethodDomainVar(action = stage$actions[[ind]], rg=rg, kel=kel)
   	}
   	stage
   })
@@ -256,7 +256,7 @@ rewrite.if.formula = function(str) {
 
 
 
-get.strategyMethodDomainVar = function(action,rg) {
+get.strategyMethodDomainVar = function(action,rg,kel) {
 	restore.point("eval.strategyMethodDomain")
 	
 	smd = action$strategyMethodDomain

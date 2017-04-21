@@ -50,20 +50,18 @@ make.stage.page = function(stage=rg$stages[[1]], rg, pages.dir = get.pages.dir(g
 '<h3>', stage$name,'</h3>		
 <h4>Player: {{.player}}</h4>'		
 	)
-	
-	if (!identical(stage$observe,"")) {
-		if (is.call(stage$observe)) {
-			obs.txt = paste0("Cannot automatically generate observations for R formula <br>\n",deparse1(stage$observe))
-		} else {
-			obs.txt = paste0(stage$observe, ": {{", stage$observe,"}}", collapse = "<br>\n" )
-		}
-		obs.txt = paste0("\n\n<h3>Observations</h3>\n<p>\n", obs.txt,"\n</p>")
-		
+	if (is.call(stage$observe)) {
+		obs.txt = paste0("Cannot automatically generate observations for R formula <br>\n",deparse1(stage$observe))
 	} else {
-		obs.txt = ""
+		obs.vars = setdiff(stage$observe, c("",stage$domain.vars))
+		if (length(obs.vars)>0) {
+			obs.txt = paste0(stage$observe, ": {{", stage$observe,"}}", collapse = "<br>\n" )
+			obs.txt = paste0("\n\n<h3>Observations</h3>\n<p>\n", obs.txt,"\n</p>")
+		} else {
+			obs.txt = ""
+		}
 	}
-	
-	if (lang != "en") lang = "native"
+
 	action.txt = ""
 	if (length(stage$actions)>0) {
 		action.txt = lapply(stage$actions, make.page.action.txt, rg=rg, stage=stage)
@@ -107,15 +105,20 @@ make.page.action.txt = function(action,rg, stage) {
 		
 		table.class = paste0("table-",stage$name,"-",action$name) 
 		res = paste0('
-Choose your action "',action$name,'" conditional on the value of "',paste0(domain.var, collapse=", "),'
-"
+Choose your action "',action$name,'" conditional on the value of "',paste0(domain.var, collapse=", "),'"
 <!--
 You can adapt the style of the strategy method table cells here. -->
 <style>
-	table.',table.class,' td {
+	table.',table.class,' > tbody > tr > td {
 		border-bottom: solid;
 		border-bottom-width: 1px;
 		padding-left: 5px;
+	}
+	table.',table.class,' table.rowRadioTable td {
+		padding-left: 5px;
+		padding-right: 3px;
+		padding-top: 3px;
+		padding-bottom: 3px;
 	}
 </style>
 <table class="',table.class,'">
@@ -125,7 +128,7 @@ You can adapt the style of the strategy method table cells here. -->
 <tr>
 ',domain.val.td,'
 <!-- possible input types: "rowRadio", "select", "radio" --> 
-<td>{{stratMethInput(inputType="select", choiceLabels= ', clc,')}}</td>
+<td>{{stratMethInput(inputType="rowRadio", choiceLabels= ', clc,')}}</td>
 </tr>
 #> end stratMethRows
 
