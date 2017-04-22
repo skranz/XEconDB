@@ -71,7 +71,7 @@ make.wait.page = function(rg, pages.dir = get.pages.dir(gameId=rg$gameId), file 
 make.stage.page = function(stage=rg$stages[[1]], rg, pages.dir = get.pages.dir(gameId=rg$gameId), file = NULL, lang="en") {
 	restore.point("make.stage.page")
 	
-	if (is.numeric(stage)) stage = rg$stages[[stage]]
+	if (is.numeric(stage) | is.character(stage)) stage = rg$stages[[stage]]
 	
 	if (is.null(file)) {
 		file = paste0(stage$name,".auto.Rmd")

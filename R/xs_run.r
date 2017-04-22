@@ -66,9 +66,9 @@ xs.edit.page.click = function(...) {
 	
 	if (length(stage.nums)==0) return()
 	
-	for (stage.num in stage.nums) {
-		stage = em$vg.stages[[stage.num]]
-		try(xs.show.edit.page.tab(gameId=em$gameId, stage=stage))
+	for (stage.num in rev(stage.nums)) {
+		stage = em$vg$stages[[stage.num]]
+		try(xs.show.edit.page.tab(gameId=em$gameId, stage.name=stage$name))
 	}
 	
 }
@@ -155,7 +155,12 @@ xs.new.match = function(gameId=xs$run.gameId, variant=NULL, xs=app$xs, app=getAp
   	dsetUI(ns(paste0("uiInfoPlayer",i)),"")
   }
   
-
+	changeHandler("playersTabset", function(...) {
+		args = list(...)
+		restore.point("playersTabset.change")
+		cat("\ntabset has changed!")
+	})
+  
   em.start.match(em=em)
 }
 
