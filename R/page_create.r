@@ -7,6 +7,28 @@ examples.make.pages = function() {
 	make.stage.page(stage = 2,rg=rg)
 }
 
+load.rg.wait.page = function(rg,  pages.dir = get.pages.dir(gameId=rg$gameId), file=NULL, make.if.missing = TRUE, remake.auto = !TRUE) {
+	restore.point("load.rg.wait.page")
+	if (is.null(file)) {
+		file = paste0("wait-page.Rmd")
+		if (!file.exists(file.path(pages.dir,file)) & !remake.auto)
+			file = paste0("wait-page.auto.Rmd")
+	}
+	
+	
+	if (!file.exists(file.path(pages.dir,file))) {
+		if (make.if.missing) {
+			page = make.wait.page(rg=rg)
+		} else {
+			stop(paste0("Wait page for for game ", rg$gameId, " does not exist in folder ", pages.dir))
+		}
+	} else {
+		page = readLines(file.path(pages.dir,file))
+	}
+	return(merge.lines(page))
+}
+
+
 load.rg.stage.page = function(stage, rg,  pages.dir = get.pages.dir(gameId=rg$gameId), file=NULL, make.if.missing = TRUE, remake.auto = TRUE) {
 	restore.point("load.rg.stage.page")
 	if (is.numeric(stage) | is.character(stage)) {
@@ -35,6 +57,15 @@ make.rg.pages = function(rg) {
 	for (stage in rg$stages) {
 		make.stage.page(stage=stage, rg=rg)
 	}
+}
+
+make.wait.page = function(rg, pages.dir = get.pages.dir(gameId=rg$gameId), file = NULL, lang="en") {
+	if (is.null(file)) {
+		file = paste0("wait-page.auto.Rmd")
+	}
+	txt = paste0("<h3>Please wait...</h3>")
+	writeLines(txt, file.path(pages.dir, file))
+	merge.lines(txt)
 }
 
 make.stage.page = function(stage=rg$stages[[1]], rg, pages.dir = get.pages.dir(gameId=rg$gameId), file = NULL, lang="en") {

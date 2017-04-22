@@ -43,10 +43,12 @@ xs.run.panel.ui = function(gameId, xs=app$xs, app=getApp()) {
     smallButton(ns("newMatchBtn"), "Start",  "data-form-selector"=form.sel),
     smallButton(ns("refreshPageBtn"), "Refresh",  "data-form-selector"=form.sel),
     smallButton(ns("editPageBtn"), "Edit Page",  "data-form-selector"=form.sel),
+    smallButton(ns("infoPageBtn"), "Info",  "data-form-selector"=form.sel),
   	uiOutput(ns("runUI"))
   )
   buttonHandler(ns("newMatchBtn"), xs.new.match.click)
   buttonHandler(ns("refreshPageBtn"), xs.refresh.match.page.click)
+  buttonHandler(ns("infoPageBtn"), xs.info.page.click)
   buttonHandler(ns("editPageBtn"), xs.edit.page.click)
   
   ui
@@ -78,6 +80,44 @@ xs.refresh.match.page.click = function(formValues,..., xs=app$xs, app=getApp()) 
 }
 
 
+xs.info.page.click = function(formValues,..., xs=app$xs, app=getApp()) {
+	restore.point("xs.info.page.click")
+	em = get.em()
+	if (is.null(em)) return()
+	try({
+	em$update.page.info.fun = xs.update.page.info
+	xs.update.page.info(em)
+		
+	})
+}
+
+xs.update.page.info = function(em) {
+	
+	page.infos = lapply(seq_len(em$n), function(i) {
+		stage.num = em$player.stage[i]
+		stage.name = em$vg$stages[[stage.num]]$name
+		
+		val.html = html.table(as_data_frame(em$values))
+		html=paste0(
+			"Player: ",i,
+			ifelse(em$is.waiting[i], " (waiting)",""),
+			"<br>",
+			"Stage ",stage.num, ": ", stage.name,
+			"<br>",
+			val.html,
+			"<hr>"
+		)
+		HTML(html)
+	})
+	
+	ns = NS(paste0("run-",em$vg$gameId))
+
+	for (i in seq_len(em$n)) {
+  	dsetUI(ns(paste0("uiInfoPlayer",i)),page.infos[[i]])
+	}
+	
+}
+
 xs.new.match.click = function(formValues,..., xs=app$xs, app=getApp()) {
 	restore.point("xs.new.match.click")
 	gameId = xs$run.gameId
@@ -102,11 +142,19 @@ xs.new.match = function(gameId=xs$run.gameId, variant=NULL, xs=app$xs, app=getAp
 
   panel.li = lapply(seq_len(em$n), function(i) {
     tabPanel(title=paste0("Player ",i), value=paste0("tabPlayer",i), 
-             uiOutput(ns(paste0("uiPlayer",i))))
+    	uiOutput(ns(paste0("uiInfoPlayer",i))),
+    	uiOutput(ns(paste0("uiPlayer",i)))
+    )
   })
+  
+  
   tabset.ui = do.call("tabsetPanel", c(list(id="playersTabset"),panel.li))
   setUI(ns("runUI"), tabset.ui)
   dsetUI(ns("runUI"), tabset.ui)
+  for (i in seq_len(em$n)) {
+  	dsetUI(ns(paste0("uiInfoPlayer",i)),"")
+  }
+  
 
   em.start.match(em=em)
 }

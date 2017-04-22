@@ -17,17 +17,17 @@ new.em = function(vg=vg, subIds=NULL, app.li = NULL, container.ids = "mainUI") {
 	em$n = n
 	em$players = seq_len(n)
 	em$values = vg$params
-
-	em$player.stage = rep(0,n)
-  em$is.waiting  = rep(TRUE,n)
-  em$stage.computed = rep(FALSE, length(em$vg$stages))
+	
+	em$wait.page.ui = HTML(load.rg.wait.page(rg=vg))
   em
 }
 
 em.start.match = function(em) {
 	restore.point("em.start.match")
 	n = em$n
+	em$update.page.info.fun = NULL
 	em$values = c(list(variant=em$variant),em$vg$params)
+	em$delayed.strat.meth = list()
 	em$player.stage = rep(0,n)
   em$is.waiting  = rep(TRUE,n)
   em$stage.computed = rep(FALSE, length(em$vg$stages))
@@ -162,14 +162,17 @@ em.proceed.all.player.stage = function(em) {
 		# only proceeds if player is waiting
 		em.proceed.player.stage(em, player=player)
 	}
-	
+	# if we want to see page info
+	# for debugging purposes
+	if (!is.null(em$update.page.info.fun))
+		em$update.page.info.fun(em)
 }
 
 # only proceed if a player has finished her current stage
 em.proceed.player.stage = function(em, player=1) {
   restore.point("em.proceed.player.stage")
 	
-	#if (player == 2) stop()
+	#if (player == 2 & em$player.stage[1] >= 1 & em$is.waiting[1]) stop()
 	if (!em$is.waiting[player])
 		return()
 
@@ -199,17 +202,21 @@ em.proceed.player.stage = function(em, player=1) {
   	break
   }
   
-  # set current stage for player
-  em$player.stage[player] = next.stage
 
   # res is "wait" or "show"
   if (res == "wait") {
+  	# set previous stage for player
+  	em$player.stage[player] = next.stage-1
   	em$is.waiting[player] = TRUE
   	em.show.current.page(em, player)
     return()
   }
 
-  # res is "show"
+   # res is "show"
+  
+  # set current stage for player
+  em$player.stage[player] = next.stage
+
   em$is.waiting[player] = FALSE
   em.run.stage.computations(next.stage, em)
   em.show.current.page(em=em, player=player)
@@ -261,6 +268,9 @@ em.run.stage.computations = function(stage.num, em, skip.if.computed=TRUE) {
 		em$values[[var]] = val
 	}
 	
+	# check if delayed strategy method values
+	# can be assigned and if yes do so
+	em.assign.delayed.strat.meth.realizations(em=em)
 }
 
 
@@ -268,19 +278,16 @@ get.page.ns = function(stage.name, player) {
 	NS(paste0("page-",stage.name,"-",player))
 }
 
-wait.ui = function(...) {
-  ui = h3("Please wait...")
-  ui
-}
-
-
-get.sm.value = function(action.name, values, domain.var) {
-	restore.point("get.sm.value")
-	postfix = paste0(values[domain.var], collapse="_")
-	var = paste0(action.name,"_",postfix)
-	values[[var]]
+wait.ui = function(..., em=get.em()) {
+	if (!is.null(em$wait.page.ui))
+		return(em$wait.page.ui)
 	
+	html = load.rg.wait.page(rg=em$vg)
+	HTML(html)
+  #ui = h3("Please wait...")
+  #ui
 }
+
 
 
 em.submit.btn.click = function(formValues, player, stage.name,action.ids,sm.ids, ..., em=get.em()) {
@@ -300,14 +307,10 @@ em.submit.btn.click = function(formValues, player, stage.name,action.ids,sm.ids,
 	if (length(formValues)>0 & length(ids)>0) {
 		avals = lapply(formValues[ids], convert.atom)
 		em$values[names(ids)] = avals
+
 		
-		# assign strategy method values
-		actions = stage$actions
-		# which actions use strategy method
-		use.sm = sapply(actions, function(action) !is.null(action$domain.var))
-		for (action.name in names(actions[use.sm])) {
-			em$values[[action.name]] = get.sm.value(action.name = action.name,values = em$values,domain.var = actions[[action.name]]$domain.var)
-		}
+		em.assign.delayed.strat.meth.realizations(em=em)		
+		em.assign.strat.meth.realizations(em=em, actions=stage$actions)
 	}
 	
 	
@@ -315,6 +318,64 @@ em.submit.btn.click = function(formValues, player, stage.name,action.ids,sm.ids,
 	em.proceed.all.player.stage(em)
 	
 }
+
+
+get.sm.value = function(action.name, values, domain.var) {
+	restore.point("get.sm.value")
+	postfix = paste0(values[domain.var], collapse="_")
+	var = paste0(action.name,"_",postfix)
+	values[[var]]
+	
+}
+
+# try to assign the actual action value 
+# from the values of a strategy method
+# E.g. in an ultimatum game if offer=4
+# and accept_4 = TRUE, we set accept= TRUE
+# If offer is not yet computed
+# (stages can be shown in parallel to players)
+# store the action accept in 
+# em$delayed.strat.meth and try to assign
+# the value of accept later with 
+# em.assign.delayed.strat.meth.realizations
+em.assign.strat.meth.realizations = function(em,actions) {
+	restore.point("em.assign.strat.meth.realizations")
+	# which actions use strategy method
+	use.sm = sapply(actions, function(action) !is.null(action$domain.var))
+	actions = actions[use.sm]
+	
+	for (action.name in names(actions)) {
+		action = actions[[action.name]]
+		
+		has.domain = unlist(lapply(action$domain.var, function (dv) dv %in% names(em$values)))
+		
+		if (!all(has.domain)) {
+			
+			em$delayed.strat.meth[[action.name]] = action	
+		} else {
+			em$values[[action.name]] = get.sm.value(action.name = action.name,values = em$values,domain.var = actions[[action.name]]$domain.var)
+		}
+	}
+}
+
+em.assign.delayed.strat.meth.realizations = function(em) {
+	restore.point("em.assign.delayed.strat.meth.realizations")
+	# which actions use strategy method
+	actions = em$delayed.strat.meth
+	
+	for (action.name in names(actions)) {
+		action = actions[[action.name]]
+		
+		has.domain = unlist(lapply(action$domain.var, function (dv) dv %in% names(em$values)))
+		
+		if (all(has.domain)) {
+			em$values[[action.name]] = get.sm.value(action.name = action.name,values = em$values,domain.var = actions[[action.name]]$domain.var)
+			
+			em$delayed.strat.meth = em$delayed.strat.meth[setdiff(names(em$delayed.strat.meth), action.name)]	
+		}
+	}
+}
+
 
 submitPageBtn = function(label="Press to continue",em=get.em(),player=em$player,...) {
 	restore.point("submitPageBtn")

@@ -1,3 +1,14 @@
+named.list = function(names, ...) {
+	li = list(...)
+	names(li) = names
+	li
+}
+
+set.names = function(x, names) {
+	names(x) = names
+	x
+}
+
 deparse1 = function (call, collapse = "") 
 {
     paste0(deparse(call, width = 500), collapse = collapse)
