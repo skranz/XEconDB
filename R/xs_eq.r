@@ -246,6 +246,12 @@ xeq.tg.info.df = function(xeq,ids = names(xeq$tg.li),...) {
 		if (is.null(tg)) return("?")
 		format(NROW(tg$ise.df), big.mark=" ")
 	})
+	avg.moves = lapply(ids, function(id) {
+		tg = xeq$tg.li[[id]]
+		if (is.null(tg)) return("?")
+		format(round(mean(tg$ise.df$.num.moves),1))
+	})
+	
 	no.sg = lapply(ids, function(id) {
 		tg = xeq$tg.li[[id]]
 		if (is.null(tg$sg.df)) return("?")
@@ -283,7 +289,7 @@ xeq.tg.info.df = function(xeq,ids = names(xeq$tg.li),...) {
 	
 	mat = matrix(nrow=9, byrow = TRUE,c(
 		"Outcomes",no.oco,
-		"Info sets", no.ise,
+		"Info sets (ø moves)", paste0(no.ise," (",avg.moves,")"),
 		"Subgames", no.sg,
 		"Strat-profiles...",rep("",length(ids)),
 		"...normal-form",no.all.sp,

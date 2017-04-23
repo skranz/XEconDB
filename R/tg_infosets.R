@@ -2,6 +2,8 @@ examples.make.tg.iso.df = function() {
   setwd("D:/libraries/XEconDB/projects/UltimatumGame")
 	tg = get.tg(gameId="BunchedUltimatum", never.load=TRUE)
 	tg = get.tg(gameId="GiftEff",variant=1,never.load = TRUE)
+	tg = get.tg(gameId="StackelRandomCost",variant=1,never.load = TRUE)
+	
 	set.tg.util(tg)
 	#make.tg.iso.df(tg)
 	make.tg.ise.df(tg)
