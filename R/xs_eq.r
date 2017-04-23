@@ -71,6 +71,7 @@ xs.eq.ui = function(gameId, xs = app$xs, app=getApp()) {
 		selectInput(ns("reduce"),label="Reduce game by Eliminating some dominated moves",choices = list("No reduction"="noreduce", "Reduce"="reduce","Both"="both")),
 		selectInput(ns("solvemode"),label="Solve for",choices = xeq$solve.modes),
 		HTML("</td></tr></table>"),
+		smallButton(ns("gametreeBtn"),"Gametree", "data-form-selector"=form.sel),
 		smallButton(ns("solveBtn"),"Solve", "data-form-selector"=form.sel),
 		#smallButton(ns("efgBtn"),"Downloa", "data-form-selector"=form.sel),
     uiOutput(ns("tgmsg")),
@@ -80,6 +81,15 @@ xs.eq.ui = function(gameId, xs = app$xs, app=getApp()) {
 		
 	)
 		
+	buttonHandler(ns("gametreeBtn"),function(formValues,...) {
+		restore.point("xeqSolveClick")
+		ok = xeq.solve(xeq=xeq, formValues=formValues, clear=TRUE, never.load = xs$never.load.tg, solvemode="gametree")
+		
+		if (ok) {
+			xeq.show.tg.info(xeq)
+			xeq.show.eqo(xeq)
+		}
+	})
 	buttonHandler(ns("solveBtn"),function(formValues,...) {
 		restore.point("xeqSolveClick")
 		ok = xeq.solve(xeq=xeq, formValues=formValues, clear=TRUE, never.load = xs$never.load.tg)
@@ -95,7 +105,7 @@ xs.eq.ui = function(gameId, xs = app$xs, app=getApp()) {
 	ui
 }
 
-xeq.solve = function(xeq, formValues,clear=TRUE,  never.load=TRUE) {
+xeq.solve = function(xeq, formValues,clear=TRUE,  never.load=TRUE, solvemode=NULL) {
 	restore.point("xeq.solve")
 	ns = xeq$ns
 
@@ -108,7 +118,8 @@ xeq.solve = function(xeq, formValues,clear=TRUE,  never.load=TRUE) {
 	reduce.method = unlist(formValues[[ns("reduce")]])
 	branching.limit = unlist(formValues[[ns("branchingLimit")]])
 	sp.limit = unlist(formValues[[ns("spLimit")]])
-	solvemode = unlist(formValues[[ns("solvemode")]])
+	if (is.null(solvemode))
+		solvemode = unlist(formValues[[ns("solvemode")]])
 	xeq$solvemode = solvemode
 		
 	if (reduce.method=="reduce") {

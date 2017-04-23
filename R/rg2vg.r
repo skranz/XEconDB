@@ -161,9 +161,12 @@ extract.vg.vars.info = function(vg, kel=vg$kel) {
     		
     }
     
- 		need.vars = setdiff(need.vars,c(""))
+ 		stage.vars = unique(c(get.names(stage$actions), get.names(stage$nature), get.names(stage$compute)))
+ 		
+ 		need.vars = setdiff(need.vars,c("",stage.vars))
  		
  		# need vars are useful to determine which stages can be shown
+ 		vg$stages[[stage.num]]$stage.vars = stage.vars
  		vg$stages[[stage.num]]$need.vars = need.vars
  		vg$stages[[stage.num]]$condition.need.vars = condition.need.vars
  		vg$stages[[stage.num]]$domain.vars = domain.vars

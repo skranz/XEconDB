@@ -181,7 +181,7 @@ save.tg = function(tg, games.dir = get.games.dir(project.dir), project.dir = get
 }
 
 
-get.eq = function(tg, util.funs=NULL, just.spe=TRUE, mixed=FALSE, eq.dir = get.eq.dir(tg$gameId,project.dir), project.dir = get.project.dir(), save.new = TRUE, solvemode=NULL, solver=NULL,...) {
+get.eq = function(tg, util.funs=NULL, just.spe=TRUE, mixed=FALSE, eq.dir = get.eq.dir(tg$gameId,project.dir), efg.dir = get.efg.dir(tg$gameId, project.dir), project.dir = get.project.dir(), save.new = TRUE, solvemode=NULL, solver=NULL,...) {
 	restore.point("get.eq")
 	if (!is.null(util.funs))
 		set.tg.util(tg=tg,util.funs)
@@ -198,7 +198,7 @@ get.eq = function(tg, util.funs=NULL, just.spe=TRUE, mixed=FALSE, eq.dir = get.e
 	
 	
 	# create efg file
-	tg.to.efg(tg=tg, path=eq.dir)	
+	tg.to.efg(tg=tg, path=efg.dir)	
 
 
 	# solve equilibrium

@@ -213,13 +213,7 @@ compute.tg.stage = function(stage.num, tg, vg, kel) {
   # compute player set for each node
   kel$setKey(base.key,"player")
   tg.compute.stage.players(tg, stage, vg.stage, kel)
-  
-  stage$stage.df
-  
-  # update knowledge
-  kel$setKey(base.key,"observe")
-  tg.update.stage.knowledge(tg, stage, vg.stage, kel)
-  
+
   lev = list(lev.df = stage$stage.df, know.li=stage$know.li)
 
   # compute moves of nature
@@ -235,7 +229,17 @@ compute.tg.stage = function(stage.num, tg, vg, kel) {
     kel$setKey(base.key,"compute",i)
     lev = compute.transformation.level(tg,stage, trans, lev$lev.df, lev$know.li, kel)
   }
+
   
+  # update knowledge
+  # since moves of nature or computations
+  # may be observed (e.g. payoffs in result stage)
+  # we must updated knowledge after these are 
+  # computed, but before actions are processed.
+  kel$setKey(base.key,"observe")
+  lev$know.li = tg.update.stage.knowledge(tg=tg, lev=lev, vg.stage=vg.stage, kel=kel)
+
+    
   # compute actions
   for (i in seq_along(vg.stage$actions)) {
     action = vg.stage$actions[[i]]
@@ -244,10 +248,7 @@ compute.tg.stage = function(stage.num, tg, vg, kel) {
  
   }
 
-  
   stage$lev = lev
-  
-    
   # add missing rows to stage.df
   stage.df = lev$lev.df
   know.li = lev$know.li
@@ -366,19 +367,18 @@ tg.compute.stage.players = function(tg, stage, vg.stage, kel) {
   return()
 }
 
-tg.update.stage.knowledge = function(tg, stage, vg.stage, kel) {
+tg.update.stage.knowledge = function(tg, lev, vg.stage, kel) {
   observe = vg.stage$observe
-  know.li = stage$know.li
-  df = stage$stage.df
+  know.li = lev$know.li
+  df = lev$lev.df
   restore.point("tg.update.stage.knowledge")
 
-  #observable = unlist(c(colnames(df),get.names(vg.stage$nature),if (length(vg.stage$actions)==0) get.names(vg.stage$compute)))
-
-   observable = unlist(c(colnames(df)))
+ 
+  observable =colnames(df)
  
       
   # observe is fixed, no formula
-  if (!is(observe, "call")) {
+  if (!is(observe, "call") & !is(observe,"name")) {
     if (length(observe)==0 | identical(observe,"")) return(know.li)
     if (length(unknown <- setdiff(observe, observable))>0) {
       kel$error("You cannot observe the variable(s) {{unknown}}, because they have not been defined earlier.", unknown=unknown)
@@ -388,8 +388,7 @@ tg.update.stage.knowledge = function(tg, stage, vg.stage, kel) {
     for (i in tg$players) {
       know.li[[i]][,observe] = know.li[[i]][,observe] | df[[paste0(".player_",i)]]
     }
-    stage$know.li = know.li
-    return()
+    return(know.li)
   }
   
   # observe is a formula
@@ -429,8 +428,7 @@ tg.update.stage.knowledge = function(tg, stage, vg.stage, kel) {
       know.li[[i]][rows,obs.vars] = know.li[[i]][rows,obs.vars] | df[rows,paste0(".player_",i)]
     }
   }
-  stage$know.li = know.li
-  return()
+  return(know.li)
 }
 
 
@@ -585,7 +583,7 @@ compute.nature.level = function(tg,stage, randomVar, lev.df, know.li, kel) {
 
 
   
-   lev.df = eval.randomVar.to.df(randomVar$set,randomVar$prob,df = lev.df, var=var,kel = kel,prob.col = ".move.prob")
+  lev.df = eval.randomVar.to.df(randomVar$set,randomVar$prob,df = lev.df, var=var,kel = kel,prob.col = ".move.prob")
   
   # adapt outcome probs
 	lev.df$.prob = lev.df$.prob * lev.df$.move.prob 

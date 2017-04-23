@@ -62,7 +62,7 @@ set.tg.util = function(tg,util.funs=payoffUtil(1:tg$params$numPlayers), symmetri
 }
 
 
-tg.to.efg = function(tg, path=get.eq.dir(gameId=tg$gameId), file = NULL, util.funs = NULL, verbose=TRUE) {
+tg.to.efg = function(tg, path=get.efg.dir(gameId=tg$gameId), file = NULL, util.funs = NULL, verbose=TRUE) {
   restore.point("tg2efg")
 
   oco.df = tg$oco.df
